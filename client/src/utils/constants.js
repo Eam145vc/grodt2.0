@@ -96,3 +96,15 @@ export const UI_MESSAGES = {
   RESTART: 'Reiniciar Juego',
   LOADING: 'Cargando...'
 };
+
+// Regalos de TikTok para pruebas
+export const TIKTOK_GIFTS = [
+  { name: 'GG', lane: 1 },
+  { name: 'Journey Pass', lane: 1 },
+  { name: 'Love you so much', lane: 2 },
+  { name: 'Friendship Necklace', lane: 2 },
+  { name: 'TikTok', lane: 3 },
+  { name: 'Rosa', lane: 3 },
+  { name: 'It’s corn', lane: 4 },
+  { name: 'Heart', lane: 4 },
+];

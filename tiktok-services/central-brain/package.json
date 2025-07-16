@@ -1,0 +1,21 @@
+{
+  "name": "tiktok-central-brain",
+  "version": "1.0.0",
+  "description": "Central brain to process and unify TikTok LIVE events from multiple listeners.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "tiktok",
+    "live",
+    "events",
+    "brain"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io-client": "^4.7.5"
+  }
+}

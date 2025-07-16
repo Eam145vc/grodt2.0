@@ -40,9 +40,29 @@ const GameCanvas = ({ gameState }) => {
       ctx.lineTo(canvas.width, canvas.height - 20);
       ctx.stroke();
       
-      // Dibujar enemigos
+      // Dibujar información de la oleada y tiempo por carril
       gameState.lanes.forEach((lane, laneIndex) => {
         const laneX = laneIndex * laneWidth + laneWidth / 2;
+        
+        // Salud de la base
+        ctx.fillStyle = '#2ecc71'; // Verde para la salud
+        const healthBarWidth = (lane.baseHealth / 100) * (laneWidth - 40); // Ancho de la barra de salud
+        ctx.fillRect(laneX - (laneWidth - 40) / 2, canvas.height - 15, healthBarWidth, 10);
+        
+        // Texto de salud
+        ctx.fillStyle = '#ecf0f1';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${lane.baseHealth}/100`, laneX, canvas.height - 20); // Ajustar posición
+        
+        // Reloj y número de oleada
+        ctx.fillStyle = '#ecf0f1';
+        ctx.font = '12px Arial'; // Fuente más legible
+        ctx.textAlign = 'center';
+        const timeFormatted = `${Math.floor(gameState.waveSystem.timeRemaining / 60).toString().padStart(2, '0')}:${(gameState.waveSystem.timeRemaining % 60).toString().padStart(2, '0')}`;
+        ctx.fillText(`⏰ ${timeFormatted} | Oleada: ${gameState.waveSystem.currentWave}`, laneX, canvas.height - 10); // Ajustar posición para visibilidad
+        
+        // Dibujar enemigos
         
         // Dibujar enemigos con diferentes estilos por tipo
         if (lane.enemies && Array.isArray(lane.enemies)) {
@@ -56,9 +76,12 @@ const GameCanvas = ({ gameState }) => {
               };
               
               // Sombra del enemigo
+              const enemyX = laneX - laneWidth/2 + enemy.x;
+
+              // Sombra del enemigo
               ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
               ctx.beginPath();
-              ctx.arc(laneX + 2, enemy.y + 2, enemyType.size + 2, 0, Math.PI * 2);
+              ctx.arc(enemyX + 2, enemy.y + 2, enemyType.size + 2, 0, Math.PI * 2);
               ctx.fill();
               
               // Cuerpo del enemigo con color específico
@@ -70,23 +93,23 @@ const GameCanvas = ({ gameState }) => {
               // Formas específicas por tipo
               if (enemy.type === 'tank') {
                 // Tanque - rectángulo
-                ctx.fillRect(laneX - enemyType.size/2, enemy.y - enemyType.size/2,
+                ctx.fillRect(enemyX - enemyType.size/2, enemy.y - enemyType.size/2,
                             enemyType.size, enemyType.size);
               } else if (enemy.type === 'mini') {
                 // Mini - triángulo pequeño
                 ctx.beginPath();
-                ctx.moveTo(laneX, enemy.y - enemyType.size/2);
-                ctx.lineTo(laneX - enemyType.size/2, enemy.y + enemyType.size/2);
-                ctx.lineTo(laneX + enemyType.size/2, enemy.y + enemyType.size/2);
+                ctx.moveTo(enemyX, enemy.y - enemyType.size/2);
+                ctx.lineTo(enemyX - enemyType.size/2, enemy.y + enemyType.size/2);
+                ctx.lineTo(enemyX + enemyType.size/2, enemy.y + enemyType.size/2);
                 ctx.closePath();
                 ctx.fill();
               } else if (enemy.type === 'sniper') {
                 // Sniper - diamante
                 ctx.beginPath();
-                ctx.moveTo(laneX, enemy.y - enemyType.size/2);
-                ctx.lineTo(laneX + enemyType.size/2, enemy.y);
-                ctx.lineTo(laneX, enemy.y + enemyType.size/2);
-                ctx.lineTo(laneX - enemyType.size/2, enemy.y);
+                ctx.moveTo(enemyX, enemy.y - enemyType.size/2);
+                ctx.lineTo(enemyX + enemyType.size/2, enemy.y);
+                ctx.lineTo(enemyX, enemy.y + enemyType.size/2);
+                ctx.lineTo(enemyX - enemyType.size/2, enemy.y);
                 ctx.closePath();
                 ctx.fill();
               } else if (enemy.type === 'boss') {
@@ -95,7 +118,7 @@ const GameCanvas = ({ gameState }) => {
                 for (let i = 0; i < 8; i++) {
                   const angle = (i * Math.PI) / 4;
                   const radius = i % 2 === 0 ? enemyType.size : enemyType.size / 2;
-                  const px = laneX + Math.cos(angle) * radius;
+                  const px = enemyX + Math.cos(angle) * radius;
                   const py = enemy.y + Math.sin(angle) * radius;
                   if (i === 0) ctx.moveTo(px, py);
                   else ctx.lineTo(px, py);
@@ -104,7 +127,7 @@ const GameCanvas = ({ gameState }) => {
                 ctx.fill();
               } else {
                 // Básico y Especial 1 - círculo
-                ctx.arc(laneX, enemy.y, enemyType.size, 0, Math.PI * 2);
+                ctx.arc(enemyX, enemy.y, enemyType.size, 0, Math.PI * 2);
                 ctx.fill();
               }
               

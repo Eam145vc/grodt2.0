@@ -13,12 +13,15 @@ body {
   overflow: hidden; /* Evita barras de scroll */
   color: #ffffff;
 }
+body.admin-page-active {
+  overflow: auto !important;
+}
 
 .App {
   min-height: 100vh;
 }
 
-/* ===== ESTILOS DEL JUEGO V2 ===== */
+/* ===== ESTILOS DEL JUEGO V2 (Originales, si se necesitan) ===== */
 .game-container {
   display: flex;
   flex-direction: column;
@@ -61,6 +64,7 @@ body {
   color: #ffffff;
 }
 
+/* Estos estilos serán reemplazados por el nuevo layout */
 .game-canvas-container {
   position: relative;
   display: flex;
@@ -191,13 +195,10 @@ body {
 
 /* ===== ESTILOS DEL ADMIN V2 ===== */
 .admin-container-v2 {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
   min-height: 100vh;
   padding: 20px;
   background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+  overflow: auto; /* Permite desplazamiento si el contenido excede el viewport */
 }
 
 .admin-panel-v2 {
@@ -205,12 +206,42 @@ body {
   backdrop-filter: blur(15px);
   border-radius: 25px;
   padding: 30px;
-  box-shadow: 
+  box-shadow:
     0 25px 50px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.1);
-  max-width: 900px;
-  width: 100%;
+  width: 100%; /* Ocupa el 100% del ancho disponible en el contenedor */
+  max-width: 1800px; /* Aumentamos el ancho máximo para pantallas 16:9 */
+  margin: 0 auto; /* Centra el panel si la pantalla es más ancha que max-width */
+  height: auto; /* La altura se ajusta al contenido */
+  min-height: 80vh; /* Asegura una altura mínima para el panel */
   border: 1px solid rgba(0, 212, 255, 0.3);
+  overflow-y: visible; /* Permite que el contenido se desborde si es necesario, el contenedor padre lo manejará */
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Dos columnas de igual tamaño */
+  grid-template-rows: auto 1fr; /* Fila para el header, el resto para el contenido */
+  grid-template-areas:
+    "header header"
+    "main-controls game-state";
+  gap: 30px;
+}
+
+.admin-panel-v2 > .admin-header {
+  grid-area: header;
+}
+
+.main-controls-col {
+  grid-area: main-controls;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.game-state-col {
+  grid-area: game-state;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
 .admin-header {
@@ -632,7 +663,41 @@ body {
   text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
 
+.admin-select-v2 {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 15px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%2300d4ff%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%27%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px top 50%;
+  background-size: .65em auto;
+  padding-right: 40px; /* Espacio para la flecha */
+}
+
+.admin-select-v2:hover {
+  border-color: #00d4ff;
+}
+
 /* Responsive */
+@media (max-width: 1024px) {
+  .admin-panel-v2 {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "main-controls"
+      "game-state";
+  }
+}
+
 @media (max-width: 768px) {
   .admin-panel-v2 {
     padding: 20px;
@@ -683,7 +748,8 @@ body {
     grid-template-columns: 1fr;
   }
 }
-/* ===== ESTILOS DEL NUEVO LAYOUT 9:16 (Corregido) ===== */
+
+/* ===== ESTILOS DEL NUEVO LAYOUT 9:16 (Restaurado y Corregido) ===== */
 
 .game-viewport {
   width: 100vw;
@@ -764,4 +830,63 @@ body {
   color: #ffffff;
   font-family: 'Courier New', monospace;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+
+/* ===== ESTILOS PARA EL LAYOUT DEL PANEL DE ADMIN 16:9 ===== */
+
+.admin-layout-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: auto;
+  grid-template-areas:
+    "header header"
+    "controls status"
+    "footer footer";
+  gap: 2rem;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.admin-grid .admin-header {
+  grid-area: header;
+}
+
+.admin-grid-col-1 {
+  grid-area: controls;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-grid-col-2 {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-grid .admin-footer {
+  grid-area: footer;
+}
+
+@media (max-width: 1200px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "controls"
+      "status"
+      "footer";
+  }
 }

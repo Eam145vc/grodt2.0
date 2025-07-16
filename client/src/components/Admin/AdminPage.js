@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import { TIKTOK_GIFTS } from '../../utils/constants';
+import GameCanvas from '../Game/GameCanvas';
 
 const AdminPage = () => {
   const socketRef = useRef(null);
   const [gameState, setGameState] = useState({
     lanes: [
-      { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-      { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-      { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-      { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false }
+      { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
+      { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
+      { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
+      { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false }
     ],
     waveSystem: {
       isActive: false,
@@ -19,11 +21,32 @@ const AdminPage = () => {
     },
     globalGameOver: false,
     winner: null,
-    enemyTypes: {}
+    enemyTypes: {},
+    activePowerUps: {
+      turrets: [],
+      freezeBalls: [],
+      doubleBullets: []
+    }
   });
   const [isConnected, setIsConnected] = useState(false);
+  const [selectedGifts, setSelectedGifts] = useState({ 1: '', 2: '', 3: '', 4: '' });
+  const [coinAmounts, setCoinAmounts] = useState({ 1: 10, 2: 10, 3: 10, 4: 10 });
+  const [powerUpLane, setPowerUpLane] = useState(1);
+  const [teamCommand, setTeamCommand] = useState('/equipo colombia');
 
   useEffect(() => {
+    // Activar el scroll en el body cuando esta página esté activa
+    document.body.classList.add('admin-page-active');
+
+    const initialGifts = {};
+    for (let i = 1; i <= 4; i++) {
+      const firstGiftForLane = TIKTOK_GIFTS.find(g => g.lane === i);
+      if (firstGiftForLane) {
+        initialGifts[i] = firstGiftForLane.name;
+      }
+    }
+    setSelectedGifts(initialGifts);
+
     socketRef.current = io('http://localhost:5000');
     
     socketRef.current.on('connect', () => {
@@ -37,15 +60,33 @@ const AdminPage = () => {
     });
     
     socketRef.current.on('gameState', (newGameState) => {
-      setGameState(newGameState);
+      // Clonar el estado para forzar una nueva renderización
+      setGameState(JSON.parse(JSON.stringify(newGameState)));
     });
     
     return () => {
+      // Limpiar la clase del body cuando el componente se desmonte
+      document.body.classList.remove('admin-page-active');
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
   }, []);
+
+  const handleGiftChange = (laneId, giftName) => {
+    setSelectedGifts(prev => ({ ...prev, [laneId]: giftName }));
+  };
+
+  const handleCoinChange = (laneId, amount) => {
+    const newAmount = Math.max(1, parseInt(amount, 10) || 1);
+    setCoinAmounts(prev => ({ ...prev, [laneId]: newAmount }));
+  };
+
+  const handleAddCoins = (laneId) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('addCoins', { laneId, amount: coinAmounts[laneId] });
+    }
+  };
 
   const spawnEnemy = (laneId, enemyType) => {
     if (socketRef.current && isConnected) {
@@ -89,32 +130,60 @@ const AdminPage = () => {
     }
   };
 
+  const spawnTurret = (laneId) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('spawnTurret', laneId);
+    }
+  };
+
+  const spawnFreezeBall = (laneId) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('spawnFreezeBall', laneId);
+    }
+  };
+
+  const activateDoubleBullets = (laneId) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('activateDoubleBullets', laneId);
+    }
+  };
+
+  const simulateTikTokEvent = (eventType, data) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('tiktok-event', { event_type: eventType, data });
+    }
+  };
+
+  const handleTeamCommand = () => {
+    if (socketRef.current && isConnected && teamCommand.startsWith('/equipo ')) {
+      const teamName = teamCommand.split(' ')[1];
+      if (teamName) {
+        socketRef.current.emit('join-team', { userId: 'admin_user', teamName });
+      }
+    }
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatTimeRemaining = (endTime) => {
+    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+    return `${remaining}s`;
+  };
+
   const getEnemyTypeIcon = (type) => {
     const icons = {
-      basic: '🟢',
-      mini: '🔵',
-      special1: '🟡',
-      tank: '🟤',
-      sniper: '🎯',
-      boss: '🔴'
+      basic: '🟢', mini: '🔵', special1: '🟡', tank: '🟤', sniper: '🎯', boss: '🔴'
     };
     return icons[type] || '👾';
   };
 
   const getEnemyTypeName = (type) => {
     const names = {
-      basic: 'Básico',
-      mini: 'Mini',
-      special1: 'Especial 1',
-      tank: 'Tanque',
-      sniper: 'Sniper',
-      boss: 'Boss'
+      basic: 'Básico', mini: 'Mini', special1: 'Especial 1', tank: 'Tanque', sniper: 'Sniper', boss: 'Boss'
     };
     return names[type] || type;
   };
@@ -122,208 +191,275 @@ const AdminPage = () => {
   const enemyTypes = ['basic', 'mini', 'special1', 'tank', 'sniper', 'boss'];
 
   return (
-    <div className="admin-container-v2">
-      <div className="admin-panel-v2">
+    <div className="admin-layout-container">
+      <div className="admin-grid">
         <div className="admin-header">
           <h1 className="admin-title-v2">🎮 Centro de Control Avanzado</h1>
           <div className="admin-subtitle">Sistema Multi-Enemigos Tower Defense</div>
         </div>
-        
-        {/* Estado de conexión */}
-        <div className={`connection-status-v2 ${isConnected ? 'connected' : 'disconnected'}`}>
-          <div className="connection-indicator">
-            {isConnected ? '🟢' : '🔴'}
-          </div>
-          <span>{isConnected ? 'Conectado al servidor' : 'Desconectado del servidor'}</span>
-        </div>
 
-        {/* Panel de estado de oleadas */}
-        <div className="wave-status-panel">
-          <div className="wave-info">
-            <div className="wave-counter">
-              <h3>🌊 Oleada {gameState.waveSystem.currentWave}</h3>
-              <div className="wave-timer">
-                ⏱️ {formatTime(gameState.waveSystem.timeRemaining)}
-              </div>
-              <div className="wave-duration">
-                Duración: {gameState.waveSystem.maxTime}s
-              </div>
-            </div>
-            <div className="game-stats">
-              <div className="stat-item">
-                <span className="stat-label">👾 Enemigos Totales:</span>
-                <span className="stat-value">
-                  {gameState.lanes.reduce((total, lane) => total + (lane.enemies ? lane.enemies.length : 0), 0)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">🎯 Proyectiles:</span>
-                <span className="stat-value">
-                  {gameState.lanes.reduce((total, lane) => total + (lane.enemyProjectiles ? lane.enemyProjectiles.length : 0), 0)}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">⚔️ Estado:</span>
-                <span className={`stat-value status-${
-                  gameState.waveSystem.isActive ?
-                    (gameState.waveSystem.isPaused ? 'paused' : 'active') : 'stopped'
-                }`}>
-                  {gameState.waveSystem.isActive ?
-                    (gameState.waveSystem.isPaused ? '⏸️ Pausado' : '▶️ Activo') : '⏹️ Detenido'}
-                </span>
-              </div>
-            </div>
+        <div className="admin-grid-col-1">
+          {/* Columna de Controles Principales */}
+          <div className={`connection-status-v2 ${isConnected ? 'connected' : 'disconnected'}`}>
+            <div className="connection-indicator">{isConnected ? '🟢' : '🔴'}</div>
+            <span>{isConnected ? 'Conectado al servidor' : 'Desconectado del servidor'}</span>
           </div>
-        </div>
 
-        {/* Controles de oleadas */}
-        <div className="admin-section-v2">
-          <h3 className="section-title">🌊 Control de Oleadas</h3>
-          <div className="wave-controls">
-            <button
-              className="admin-button-v2 wave-start"
-              onClick={startWaves}
-              disabled={!isConnected || (gameState.waveSystem.isActive && !gameState.waveSystem.isPaused)}
-            >
-              {gameState.waveSystem.isActive && gameState.waveSystem.isPaused ? '▶️ Reanudar' : '🚀 Iniciar'}
-            </button>
-            <button
-              className="admin-button-v2 wave-pause"
-              onClick={pauseWaves}
-              disabled={!isConnected || !gameState.waveSystem.isActive || gameState.waveSystem.isPaused}
-            >
-              ⏸️ Pausar
-            </button>
-            <button
-              className="admin-button-v2 wave-stop"
-              onClick={stopWaves}
-              disabled={!isConnected}
-            >
-              🛑 Detener & Reset
-            </button>
-            <button
-              className="admin-button-v2 wave-next"
-              onClick={forceNextWave}
-              disabled={!isConnected || !gameState.waveSystem.isActive}
-            >
-              ⏭️ Siguiente Oleada
-            </button>
-          </div>
-        </div>
-        
-        {/* Estado de jugadores */}
-        <div className="admin-section-v2">
-          <h3 className="section-title">👥 Estado de Jugadores</h3>
-          <div className="players-grid">
-            {gameState.lanes.map((lane, index) => (
-              <div 
-                key={lane.id} 
-                className={`player-card ${lane.isGameOver ? 'eliminated' : 'alive'}`}
-              >
-                <div className="player-header">
-                  <h4>Jugador {index + 1}</h4>
-                  <div className={`player-status ${lane.isGameOver ? 'dead' : 'alive'}`}>
-                    {lane.isGameOver ? '💀' : '❤️'}
-                  </div>
-                </div>
-                <div className="player-stats">
-                  <div className="stat-row">
-                    <span>❤️ Vida:</span>
-                    <span className={`health-value ${
-                      lane.baseHealth > 66 ? 'high' : 
-                      lane.baseHealth > 33 ? 'medium' : 'low'
-                    }`}>
-                      {lane.baseHealth}/100
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <span>👾 Enemigos:</span>
-                    <span>{lane.enemies ? lane.enemies.length : 0}</span>
-                  </div>
-                  <div className="stat-row">
-                    <span>🔫 Balas:</span>
-                    <span>{lane.bullets ? lane.bullets.length : 0}</span>
-                  </div>
-                  <div className="stat-row">
-                    <span>🎯 Proyectiles:</span>
-                    <span>{lane.enemyProjectiles ? lane.enemyProjectiles.length : 0}</span>
-                  </div>
-                </div>
-                <div className="health-bar">
-                  <div 
-                    className="health-fill"
-                    style={{ 
-                      width: `${lane.baseHealth}%`,
-                      backgroundColor: lane.baseHealth > 66 ? '#00ff88' : 
-                                     lane.baseHealth > 33 ? '#ffaa00' : '#ff4444'
-                    }}
-                  ></div>
-                </div>
+          <div className="wave-status-panel">
+            <div className="wave-info">
+              <div className="wave-counter">
+                <h3>🌊 Oleada {gameState.waveSystem.currentWave}</h3>
+                <div className="wave-timer">⏱️ {formatTime(gameState.waveSystem.timeRemaining)}</div>
+                <div className="wave-duration">Duración: {gameState.waveSystem.maxTime}s</div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Spawn manual de enemigos por tipo */}
-        <div className="admin-section-v2">
-          <h3 className="section-title">👾 Spawn Manual de Enemigos</h3>
-          
-          {enemyTypes.map(enemyType => (
-            <div key={enemyType} className="enemy-spawn-section">
-              <h4 className="enemy-type-title">
-                {getEnemyTypeIcon(enemyType)} {getEnemyTypeName(enemyType)}
-                {gameState.enemyTypes && gameState.enemyTypes[enemyType.toUpperCase()] && (
-                  <span className="enemy-stats">
-                    ({gameState.enemyTypes[enemyType.toUpperCase()].health} HP, 
-                    {gameState.enemyTypes[enemyType.toUpperCase()].damage} DMG)
+              <div className="game-stats">
+                <div className="stat-item">
+                  <span className="stat-label">👾 Enemigos Totales:</span>
+                  <span className="stat-value">{gameState.lanes.reduce((total, lane) => total + (lane.enemies ? lane.enemies.length : 0), 0)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">🎯 Proyectiles:</span>
+                  <span className="stat-value">{gameState.lanes.reduce((total, lane) => total + (lane.enemyProjectiles ? lane.enemyProjectiles.length : 0), 0)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">🏗️ Torretas:</span>
+                  <span className="stat-value">{gameState.lanes.reduce((total, lane) => total + (lane.turrets ? lane.turrets.length : 0), 0)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">⚔️ Estado:</span>
+                  <span className={`stat-value status-${gameState.waveSystem.isActive ? (gameState.waveSystem.isPaused ? 'paused' : 'active') : 'stopped'}`}>
+                    {gameState.waveSystem.isActive ? (gameState.waveSystem.isPaused ? '⏸️ Pausado' : '▶️ Activo') : '⏹️ Detenido'}
                   </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">🌊 Control de Oleadas</h3>
+            <div className="wave-controls">
+              <button className="admin-button-v2 wave-start" onClick={startWaves} disabled={!isConnected || (gameState.waveSystem.isActive && !gameState.waveSystem.isPaused)}>
+                {gameState.waveSystem.isActive && gameState.waveSystem.isPaused ? '▶️ Reanudar' : '🚀 Iniciar'}
+              </button>
+              <button className="admin-button-v2 wave-pause" onClick={pauseWaves} disabled={!isConnected || !gameState.waveSystem.isActive || gameState.waveSystem.isPaused}>
+                ⏸️ Pausar
+              </button>
+              <button className="admin-button-v2 wave-stop" onClick={stopWaves} disabled={!isConnected}>
+                🛑 Detener & Reset
+              </button>
+              <button className="admin-button-v2 wave-next" onClick={forceNextWave} disabled={!isConnected || !gameState.waveSystem.isActive}>
+                ⏭️ Siguiente Oleada
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">⚡ Power-Ups</h3>
+            {(gameState.activePowerUps.turrets.length > 0 || gameState.activePowerUps.doubleBullets.length > 0) && (
+              <div className="powerups-status">
+                <h4 style={{ color: '#00ff88', marginBottom: '10px' }}>🔥 Power-Ups Activos:</h4>
+                {gameState.activePowerUps.turrets.length > 0 && (
+                  <div className="powerup-indicator turret-active">
+                    🏗️ Torretas activas: {gameState.activePowerUps.turrets.map(p => `P${p.laneId} (${formatTimeRemaining(p.endTime)})`).join(', ')}
+                  </div>
                 )}
-              </h4>
-              <div className="enemy-spawn-controls">
+                {gameState.activePowerUps.doubleBullets.length > 0 && (
+                  <div className="powerup-indicator double-bullets-active">
+                    🎯 Balas Dobles activas: {gameState.activePowerUps.doubleBullets.map(p => `P${p.laneId} (${formatTimeRemaining(p.endTime)})`).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="powerup-section">
+              <h4 className="powerup-title">🏗️ Torretas Laterales (60s)</h4>
+              <p className="powerup-description">Spawn una torreta que sigue y dispara al enemigo más adelantado</p>
+              <div className="powerup-controls">
                 {gameState.lanes.map((lane, index) => (
-                  <button 
-                    key={`${enemyType}-${lane.id}`}
-                    className={`admin-button-v2 spawn-enemy-type ${lane.isGameOver ? 'disabled' : ''}`}
-                    onClick={() => spawnEnemy(lane.id, enemyType)}
-                    disabled={!isConnected || lane.isGameOver}
-                  >
-                    {lane.isGameOver ? '💀' : getEnemyTypeIcon(enemyType)} P{index + 1}
+                  <button key={`turret-${lane.id}`} className={`admin-button-v2 powerup-turret ${lane.isGameOver ? 'disabled' : ''}`} onClick={() => spawnTurret(lane.id)} disabled={!isConnected || lane.isGameOver}>
+                    {lane.isGameOver ? '💀' : '🏗️'} P{index + 1}
+                    {lane.turrets && lane.turrets.length > 0 && (<span className="turret-count"> ({lane.turrets.length})</span>)}
                   </button>
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-        
-        {/* Controles de disparos */}
-        <div className="admin-section-v2">
-          <h3 className="section-title">🔫 Control de Disparos</h3>
-          <div className="shoot-controls">
-            <div className="individual-shoots">
-              {gameState.lanes.map((lane, index) => (
-                <button 
-                  key={lane.id}
-                  className={`admin-button-v2 shoot-bullet ${lane.isGameOver ? 'disabled' : ''}`}
-                  onClick={() => shootBullet(lane.id)}
-                  disabled={!isConnected || lane.isGameOver}
-                >
-                  🔫 P{index + 1}
-                </button>
-              ))}
+            <div className="powerup-section">
+              <h4 className="powerup-title">🧊 Bola de Hielo (5s congelamiento)</h4>
+              <p className="powerup-description">Lanza una bola que congela todos los enemigos presentes</p>
+              <div className="powerup-controls">
+                {gameState.lanes.map((lane, index) => (
+                  <button key={`freeze-${lane.id}`} className={`admin-button-v2 powerup-freeze ${lane.isGameOver ? 'disabled' : ''}`} onClick={() => spawnFreezeBall(lane.id)} disabled={!isConnected || lane.isGameOver}>
+                    {lane.isGameOver ? '💀' : '🧊'} P{index + 1}
+                    {lane.freezeBalls && lane.freezeBalls.length > 0 && (<span className="freeze-count"> ({lane.freezeBalls.length})</span>)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button 
-              className="admin-button-v2 shoot-all" 
-              onClick={shootAllBullets}
-              disabled={!isConnected}
-            >
-              🚀 Disparar Todos
-            </button>
+            <div className="powerup-section">
+              <h4 className="powerup-title">🎯 Balas Dobles (20s duración)</h4>
+              <p className="powerup-description">Las balas hacen doble daño y se ven más grandes</p>
+              <div className="powerup-controls">
+                {gameState.lanes.map((lane, index) => (
+                  <button key={`double-${lane.id}`} className={`admin-button-v2 powerup-double ${lane.isGameOver ? 'disabled' : ''} ${lane.doubleBulletsActive ? 'active' : ''}`} onClick={() => activateDoubleBullets(lane.id)} disabled={!isConnected || lane.isGameOver || lane.doubleBulletsActive}>
+                    {lane.isGameOver ? '💀' : lane.doubleBulletsActive ? '🎯✨' : '🎯'} P{index + 1}
+                    {lane.doubleBulletsActive && (<span className="double-active"> (ACTIVO)</span>)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Panel de ganador */}
+        <div className="admin-grid-col-2">
+          {/* Canvas del Juego */}
+          <div className="admin-section-v2">
+            <GameCanvas gameState={gameState} />
+          </div>
+
+          {/* Columna de Estado y Spawns */}
+          <div className="admin-section-v2">
+            <h3 className="section-title">👥 Estado de Jugadores</h3>
+            <div className="players-grid">
+              {gameState.lanes.map((lane, index) => (
+                <div key={lane.id} className={`player-card ${lane.isGameOver ? 'eliminated' : 'alive'}`}>
+                  <div className="player-header">
+                    <h4>Jugador {index + 1}</h4>
+                    <div className={`player-status ${lane.isGameOver ? 'dead' : 'alive'}`}>{lane.isGameOver ? '💀' : '❤️'}</div>
+                  </div>
+                  <div className="player-stats">
+                    <div className="stat-row">
+                      <span>❤️ Vida:</span>
+                      <span className={`health-value ${lane.baseHealth > 66 ? 'high' : lane.baseHealth > 33 ? 'medium' : 'low'}`}>{lane.baseHealth}/100</span>
+                    </div>
+                    <div className="stat-row"><span>👾 Enemigos:</span><span>{lane.enemies ? lane.enemies.length : 0}</span></div>
+                    <div className="stat-row"><span>🔫 Balas:</span><span>{lane.bullets ? lane.bullets.length : 0}</span></div>
+                    <div className="stat-row"><span>🎯 Proyectiles:</span><span>{lane.enemyProjectiles ? lane.enemyProjectiles.length : 0}</span></div>
+                    <div className="stat-row"><span>🏗️ Torretas:</span><span>{lane.turrets ? lane.turrets.length : 0}</span></div>
+                    <div className="stat-row"><span>🧊 Bolas Hielo:</span><span>{lane.freezeBalls ? lane.freezeBalls.length : 0}</span></div>
+                    <div className="stat-row">
+                      <span>🎯 Balas Dobles:</span>
+                      <span className={lane.doubleBulletsActive ? 'powerup-active' : ''}>{lane.doubleBulletsActive ? 'ACTIVO' : 'Inactivo'}</span>
+                    </div>
+                  </div>
+                  <div className="health-bar">
+                    <div className="health-fill" style={{ width: `${lane.baseHealth}%`, backgroundColor: lane.baseHealth > 66 ? '#00ff88' : lane.baseHealth > 33 ? '#ffaa00' : '#ff4444' }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">👾 Spawn Manual de Enemigos</h3>
+            {enemyTypes.map(enemyType => (
+              <div key={enemyType} className="enemy-spawn-section">
+                <h4 className="enemy-type-title">
+                  {getEnemyTypeIcon(enemyType)} {getEnemyTypeName(enemyType)}
+                  {gameState.enemyTypes && gameState.enemyTypes[enemyType.toUpperCase()] && (
+                    <span className="enemy-stats">({gameState.enemyTypes[enemyType.toUpperCase()].health} HP, {gameState.enemyTypes[enemyType.toUpperCase()].damage} DMG)</span>
+                  )}
+                </h4>
+                <div className="enemy-spawn-controls">
+                  {gameState.lanes.map((lane, index) => (
+                    <button key={`${enemyType}-${lane.id}`} className={`admin-button-v2 spawn-enemy-type ${lane.isGameOver ? 'disabled' : ''}`} onClick={() => spawnEnemy(lane.id, enemyType)} disabled={!isConnected || lane.isGameOver}>
+                      {lane.isGameOver ? '💀' : getEnemyTypeIcon(enemyType)} P{index + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="admin-section-v2">
+            <h3 className="section-title">🔫 Control de Disparos</h3>
+            <div className="shoot-controls">
+              <div className="individual-shoots">
+                {gameState.lanes.map((lane, index) => (
+                  <button key={lane.id} className={`admin-button-v2 shoot-bullet ${lane.isGameOver ? 'disabled' : ''}`} onClick={() => shootBullet(lane.id)} disabled={!isConnected || lane.isGameOver}>
+                    🔫 P{index + 1}
+                  </button>
+                ))}
+              </div>
+              <button className="admin-button-v2 shoot-all" onClick={shootAllBullets} disabled={!isConnected}>
+                🚀 Disparar Todos
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">🎁 Pruebas de TikTok</h3>
+            {[1, 2, 3, 4].map(laneId => {
+              const giftsForLane = TIKTOK_GIFTS.filter(g => g.lane === laneId);
+              return (
+                <div key={laneId} className="powerup-section">
+                  <h4 className="powerup-title">Carril {laneId}</h4>
+                  <div className="powerup-controls">
+                    <button className="admin-button-v2 like" onClick={() => simulateTikTokEvent('like', { user: 'test_user', count: 1, lane: laneId })} disabled={!isConnected}>
+                      👍 Simular Like
+                    </button>
+                    <select value={selectedGifts[laneId]} onChange={(e) => handleGiftChange(laneId, e.target.value)} disabled={!isConnected || giftsForLane.length === 0} className="admin-select-v2">
+                      {giftsForLane.map(gift => (
+                        <option key={gift.name} value={gift.name}>{gift.name}</option>
+                      ))}
+                    </select>
+                    <button className="admin-button-v2 gift" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: selectedGifts[laneId], count: 1, lane: laneId })} disabled={!isConnected || !selectedGifts[laneId]}>
+                      Probar Regalo
+                    </button>
+                  </div>
+                  <div className="powerup-controls" style={{ marginTop: '10px' }}>
+                    <input
+                      type="number"
+                      value={coinAmounts[laneId]}
+                      onChange={(e) => handleCoinChange(laneId, e.target.value)}
+                      className="admin-input-v2"
+                      disabled={!isConnected}
+                    />
+                    <button className="admin-button-v2 coins" onClick={() => handleAddCoins(laneId)} disabled={!isConnected}>
+                      💰 Enviar Monedas
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">⚡ Pruebas de Power-Ups</h3>
+            <div className="powerup-controls">
+              <select value={powerUpLane} onChange={(e) => setPowerUpLane(parseInt(e.target.value, 10))} className="admin-select-v2">
+                <option value={1}>Carril 1</option>
+                <option value={2}>Carril 2</option>
+                <option value={3}>Carril 3</option>
+                <option value={4}>Carril 4</option>
+              </select>
+              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Game Controller', count: 1, lane: powerUpLane })} disabled={!isConnected}>
+                🏗️ Game Controller
+              </button>
+              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Super GG', count: 1, lane: powerUpLane })} disabled={!isConnected}>
+                🧊 Super GG
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-section-v2">
+            <h3 className="section-title">📢 Pruebas de Comandos</h3>
+            <div className="powerup-controls">
+              <input
+                type="text"
+                value={teamCommand}
+                onChange={(e) => setTeamCommand(e.target.value)}
+                className="admin-input-v2"
+                style={{ flexGrow: 2 }}
+                disabled={!isConnected}
+              />
+              <button className="admin-button-v2" onClick={handleTeamCommand} disabled={!isConnected}>
+                Enviar Comando
+              </button>
+            </div>
+          </div>
+        </div>
+
         {gameState.globalGameOver && (
-          <div className="winner-panel">
+          <div className="winner-panel" style={{ gridColumn: 'span 2' }}>
             {gameState.winner ? (
               <>
                 <h2 className="winner-announcement">🏆 ¡SUPERVIVIENTE!</h2>
@@ -346,13 +482,8 @@ const AdminPage = () => {
           </div>
         )}
         
-        <div className="admin-footer">
-          <p>🔗 <a 
-            href="/game" 
-            className="game-link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+        <div className="admin-footer" style={{ gridColumn: 'span 2' }}>
+          <p>🔗 <a href="/game" className="game-link" target="_blank" rel="noopener noreferrer">
             Ver Pantalla de Juego
           </a></p>
         </div>

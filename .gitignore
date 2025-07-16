@@ -1,0 +1,27 @@
+# Dependencies
+/node_modules
+/server/node_modules
+/client/node_modules
+/tiktok-services/central-brain/node_modules
+/tiktok-services/nodejs-listener/node_modules
+
+# Env files
+.env
+client/.env
+server/.env
+
+# Build output
+/build
+/dist
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Other
+.DS_Store
+.cache

@@ -1,12 +1,12 @@
 import React from 'react';
 
-const AdminPanel = ({ 
-  gameState, 
-  isConnected, 
-  onSpawnEnemy, 
-  onShootBullet, 
-  onShootAll, 
-  onReset 
+const AdminPanel = ({
+  gameState,
+  isConnected,
+  onSpawnEnemy,
+  onShootBullet,
+  onShootAll,
+  onReset
 }) => {
   return (
     <div className="admin-panel">
@@ -21,29 +21,29 @@ const AdminPanel = ({
       <div className="admin-section">
         <h3>👾 Spawn Enemigos</h3>
         <div className="button-group">
-          <button 
-            className="admin-button enemy" 
+          <button
+            className="admin-button enemy"
             onClick={() => onSpawnEnemy(1)}
             disabled={!isConnected}
           >
             Carril 1
           </button>
-          <button 
-            className="admin-button enemy" 
+          <button
+            className="admin-button enemy"
             onClick={() => onSpawnEnemy(2)}
             disabled={!isConnected}
           >
             Carril 2
           </button>
-          <button 
-            className="admin-button enemy" 
+          <button
+            className="admin-button enemy"
             onClick={() => onSpawnEnemy(3)}
             disabled={!isConnected}
           >
             Carril 3
           </button>
-          <button 
-            className="admin-button enemy" 
+          <button
+            className="admin-button enemy"
             onClick={() => onSpawnEnemy(4)}
             disabled={!isConnected}
           >
@@ -56,29 +56,29 @@ const AdminPanel = ({
       <div className="admin-section">
         <h3>🔫 Disparar Balas</h3>
         <div className="button-group">
-          <button 
-            className="admin-button shoot" 
+          <button
+            className="admin-button shoot"
             onClick={() => onShootBullet(1)}
             disabled={!isConnected}
           >
             Disparar C1
           </button>
-          <button 
-            className="admin-button shoot" 
+          <button
+            className="admin-button shoot"
             onClick={() => onShootBullet(2)}
             disabled={!isConnected}
           >
             Disparar C2
           </button>
-          <button 
-            className="admin-button shoot" 
+          <button
+            className="admin-button shoot"
             onClick={() => onShootBullet(3)}
             disabled={!isConnected}
           >
             Disparar C3
           </button>
-          <button 
-            className="admin-button shoot" 
+          <button
+            className="admin-button shoot"
             onClick={() => onShootBullet(4)}
             disabled={!isConnected}
           >
@@ -87,8 +87,8 @@ const AdminPanel = ({
         </div>
         
         <div className="button-group">
-          <button 
-            className="admin-button special" 
+          <button
+            className="admin-button special"
             onClick={onShootAll}
             disabled={!isConnected}
           >
@@ -101,8 +101,8 @@ const AdminPanel = ({
       <div className="admin-section">
         <h3>⚙️ Control del Juego</h3>
         <div className="button-group">
-          <button 
-            className="admin-button reset" 
+          <button
+            className="admin-button reset"
             onClick={onReset}
             disabled={!isConnected}
           >
@@ -150,14 +150,14 @@ const AdminPanel = ({
         </div>
       </div>
       
-      <div style={{ 
-        marginTop: '20px', 
+      <div style={{
+        marginTop: '20px',
         textAlign: 'center',
         color: 'white',
         fontSize: '16px'
       }}>
-        <p>🔗 <a 
-          href="/game" 
+        <p>🔗 <a
+          href="/game"
           style={{ color: '#3498db', textDecoration: 'underline' }}
           target="_blank"
         >
