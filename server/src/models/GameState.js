@@ -75,7 +75,12 @@ class GameState {
         doubleBulletsActive: false, // SOLO AGREGUÉ ESTO
         doubleBulletsEndTime: 0, // SOLO AGREGUÉ ESTO
         coins: 0,
-        isGameOver: false
+        energy: 0,
+        lastShotTime: 0,
+        lastDrainTime: 0,
+        overdriveStartTime: 0,
+        isGameOver: false,
+        team: null
       },
       {
         id: 2,
@@ -88,7 +93,12 @@ class GameState {
         doubleBulletsActive: false, // SOLO AGREGUÉ ESTO
         doubleBulletsEndTime: 0, // SOLO AGREGUÉ ESTO
         coins: 0,
-        isGameOver: false
+        energy: 0,
+        lastShotTime: 0,
+        lastDrainTime: 0,
+        overdriveStartTime: 0,
+        isGameOver: false,
+        team: null
       },
       {
         id: 3,
@@ -101,7 +111,12 @@ class GameState {
         doubleBulletsActive: false, // SOLO AGREGUÉ ESTO
         doubleBulletsEndTime: 0, // SOLO AGREGUÉ ESTO
         coins: 0,
-        isGameOver: false
+        energy: 0,
+        lastShotTime: 0,
+        lastDrainTime: 0,
+        overdriveStartTime: 0,
+        isGameOver: false,
+        team: null
       },
       {
         id: 4,
@@ -114,7 +129,12 @@ class GameState {
         doubleBulletsActive: false, // SOLO AGREGUÉ ESTO
         doubleBulletsEndTime: 0, // SOLO AGREGUÉ ESTO
         coins: 0,
-        isGameOver: false
+        energy: 0,
+        lastShotTime: 0,
+        lastDrainTime: 0,
+        overdriveStartTime: 0,
+        isGameOver: false,
+        team: null
       }
     ];
     
@@ -142,9 +162,43 @@ class GameState {
     };
 
     this.presala = {
+      isActive: false,
+      timeLeft: 180,
+      maxTime: 180,
       teams: {}, // { 'colombia': { points: 0, members: new Set() } }
       userTeam: {} // { 'userId': 'colombia' }
     };
+  }
+
+  assignUserToTeam(userId, teamName) {
+    const normalizedTeamName = teamName.toLowerCase();
+    const PRESALA_CONFIG = require('../config/presalaConfig');
+
+    if (!PRESALA_CONFIG.ALLOWED_TEAMS.includes(normalizedTeamName)) {
+      console.log(`[GameState] Intento de unirse a un equipo no válido: ${teamName}. Ignorando.`);
+      return;
+    }
+
+    const { teams, userTeam } = this.presala;
+
+    // Si el usuario ya estaba en un equipo, removerlo del equipo anterior
+    const oldTeam = userTeam[userId];
+    if (oldTeam && teams[oldTeam]) {
+        teams[oldTeam].members.delete(userId);
+        console.log(`Usuario ${userId} removido del equipo anterior ${oldTeam}.`);
+    }
+
+    // Añadir al nuevo equipo
+    if (!teams[normalizedTeamName]) {
+      teams[normalizedTeamName] = {
+        points: 0,
+        members: new Set()
+      };
+    }
+    teams[normalizedTeamName].members.add(userId);
+    userTeam[userId] = normalizedTeamName;
+
+    console.log(`[GameState] Usuario ${userId} se ha unido al equipo ${normalizedTeamName}.`);
   }
 
   // SOLO AGREGUÉ ESTOS 3 MÉTODOS NUEVOS
@@ -195,6 +249,7 @@ class GameState {
     const endTime = Date.now() + 20000;
     lane.doubleBulletsActive = true;
     lane.doubleBulletsEndTime = endTime;
+    lane.powerAmmo = 100; // Añadir 100 balas de poder al activar
     
     this.activePowerUps.doubleBullets.push({
       laneId: laneId,
@@ -206,6 +261,55 @@ class GameState {
     const lane = this.lanes.find(l => l.id === laneId);
     if (lane) {
       lane.coins += amount;
+    }
+  }
+
+  updateEnergyAndShooting(lane, currentTime) {
+    // 1. Drenaje de Energía
+    if (currentTime - lane.lastDrainTime > 5000) {
+      let drainAmount = 0;
+      if (lane.energy > 600) { // Nivel 3 y 4
+        drainAmount = 100;
+      } else if (lane.energy > 300) { // Nivel 2
+        drainAmount = 50;
+      } else { // Nivel 1
+        drainAmount = 10;
+      }
+
+      // Regla especial Nivel 4: el drenaje solo empieza después de 5s
+      if (lane.energy === 1000) {
+        if (lane.overdriveStartTime === 0) {
+          lane.overdriveStartTime = currentTime;
+        }
+        if (currentTime - lane.overdriveStartTime < 5000) {
+          drainAmount = 0; // No hay drenaje durante los primeros 5s de overdrive
+        }
+      } else {
+        lane.overdriveStartTime = 0; // Resetear si la energía baja de 1000
+      }
+      
+      lane.energy = Math.max(0, lane.energy - drainAmount);
+      lane.lastDrainTime = currentTime;
+    }
+
+    // 2. Lógica de Disparo
+    let shotsPerSecond = 2; // Nivel 1 (base)
+    if (lane.energy > 1000) lane.energy = 1000; // Cap energy
+    
+    if (lane.energy > 600) { // Nivel 3
+      shotsPerSecond = 4;
+    } else if (lane.energy > 300) { // Nivel 2
+      shotsPerSecond = 3;
+    }
+
+    if (lane.energy === 1000) { // Nivel 4
+        shotsPerSecond = 5;
+    }
+
+    const cooldown = 1000 / shotsPerSecond;
+    if (currentTime - lane.lastShotTime > cooldown) {
+      this.shootBullet(lane.id);
+      lane.lastShotTime = currentTime;
     }
   }
 
@@ -260,10 +364,10 @@ class GameState {
       y: 580,
       targetY: closestEnemy.y,
       speed: 8,
-      damage: lane.doubleBulletsActive ? 2 : 1, // SOLO AGREGUÉ ESTO
+      damage: 1,
       alive: true,
-      isDouble: lane.doubleBulletsActive, // SOLO AGREGUÉ ESTO
-      fromTurret: false // SOLO AGREGUÉ ESTO
+      isDouble: false,
+      fromTurret: false
     };
 
     lane.bullets.push(bullet);
@@ -374,7 +478,10 @@ class GameState {
     const currentTime = Date.now();
     
     this.lanes.forEach(lane => {
-      // Actualizar torretas
+      // Lógica de Drenaje y Disparo por Energía
+      this.updateEnergyAndShooting(lane, currentTime);
+
+      // La lógica de torretas de power-up ya no es necesaria aquí
       lane.turrets = lane.turrets.filter(turret => {
         if (currentTime > turret.endTime) {
           turret.alive = false;
@@ -436,10 +543,10 @@ class GameState {
         return freezeBall.y > -50;
       });
 
-      // Actualizar balas dobles
-      if (lane.doubleBulletsActive && currentTime > lane.doubleBulletsEndTime) {
-        lane.doubleBulletsActive = false;
-      }
+      // La lógica de balas dobles ya no es necesaria
+      // if (lane.doubleBulletsActive && currentTime > lane.doubleBulletsEndTime) {
+      //   lane.doubleBulletsActive = false;
+      // }
 
       // Actualizar enemigos congelados
       lane.enemies.forEach(enemy => {
@@ -536,6 +643,7 @@ class GameState {
       lane.doubleBulletsActive = false; // SOLO AGREGUÉ ESTO
       lane.doubleBulletsEndTime = 0; // SOLO AGREGUÉ ESTO
       lane.isGameOver = false;
+      lane.team = null;
     });
     
     // SOLO AGREGUÉ ESTO
@@ -683,7 +791,12 @@ class GameState {
         doubleBulletsActive: lane.doubleBulletsActive,
         doubleBulletsEndTime: lane.doubleBulletsEndTime,
         coins: lane.coins,
-        isGameOver: lane.isGameOver
+        energy: lane.energy,
+        isGameOver: lane.isGameOver,
+        team: lane.team,
+        // Ya no necesitamos enviar estos datos
+        // doubleBulletsActive: lane.doubleBulletsActive,
+        // doubleBulletsEndTime: lane.doubleBulletsEndTime,
       })),
       waveSystem: {
         isActive: this.waveSystem.isActive,

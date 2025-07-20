@@ -1,168 +1,94 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const AdminPanel = ({
-  gameState,
-  isConnected,
-  onSpawnEnemy,
-  onShootBullet,
-  onShootAll,
-  onReset
-}) => {
+const AdminPanel = (props) => {
+  const {
+    gameState,
+    isConnected,
+    onConnectTikTok,
+    tiktokConnection,
+    setTiktokUser,
+    tiktokUser,
+    socket
+  } = props;
+
+  console.log(`%c[AdminPanel] Renderizando. Props recibidas:`, 'color: orange; font-weight: bold;', { socket: !!socket, isConnected });
+
+  const [energyInputs, setEnergyInputs] = useState({ 1: '', 2: '', 3: '', 4: '' });
+
+  if (!gameState || !gameState.lanes) {
+    return <div>Cargando estado del juego...</div>;
+  }
+
+  const handleEnergyInputChange = (laneId, value) => {
+    setEnergyInputs(prev => ({ ...prev, [laneId]: value }));
+  };
+
+  const handleSetEnergyClick = (laneId) => {
+    console.log(`%c[AdminPanel] Clic en 'Establecer' para carril ${laneId}.`, 'color: cyan;');
+    const energyValue = parseInt(energyInputs[laneId], 10);
+    
+    if (!socket) {
+      console.error("[AdminPanel] ERROR: El objeto socket es NULO al hacer clic.");
+      return;
+    }
+
+    if (isNaN(energyValue)) {
+      console.error(`[AdminPanel] ERROR: El valor introducido '${energyInputs[laneId]}' no es un número válido.`);
+      return;
+    }
+    
+    console.log(`%c[AdminPanel] Socket válido encontrado. Emitiendo evento 'admin:setEnergy'.`, 'color: lightgreen;', { laneId, energy: energyValue });
+    socket.emit('admin:setEnergy', { laneId, energy: energyValue });
+  };
+
   return (
-    <div className="admin-panel">
-      <h1 className="admin-title">🎮 Panel de Control</h1>
-      
-      {/* Estado de conexión */}
-      <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-        {isConnected ? '🟢 Conectado al servidor' : '🔴 Desconectado del servidor'}
-      </div>
-      
-      {/* Sección de enemigos */}
+    <div style={{ border: '2px solid red', padding: '10px', margin: '10px' }}>
       <div className="admin-section">
-        <h3>👾 Spawn Enemigos</h3>
-        <div className="button-group">
-          <button
-            className="admin-button enemy"
-            onClick={() => onSpawnEnemy(1)}
-            disabled={!isConnected}
-          >
-            Carril 1
-          </button>
-          <button
-            className="admin-button enemy"
-            onClick={() => onSpawnEnemy(2)}
-            disabled={!isConnected}
-          >
-            Carril 2
-          </button>
-          <button
-            className="admin-button enemy"
-            onClick={() => onSpawnEnemy(3)}
-            disabled={!isConnected}
-          >
-            Carril 3
-          </button>
-          <button
-            className="admin-button enemy"
-            onClick={() => onSpawnEnemy(4)}
-            disabled={!isConnected}
-          >
-            Carril 4
-          </button>
-        </div>
-      </div>
-      
-      {/* Sección de disparos */}
-      <div className="admin-section">
-        <h3>🔫 Disparar Balas</h3>
-        <div className="button-group">
-          <button
-            className="admin-button shoot"
-            onClick={() => onShootBullet(1)}
-            disabled={!isConnected}
-          >
-            Disparar C1
-          </button>
-          <button
-            className="admin-button shoot"
-            onClick={() => onShootBullet(2)}
-            disabled={!isConnected}
-          >
-            Disparar C2
-          </button>
-          <button
-            className="admin-button shoot"
-            onClick={() => onShootBullet(3)}
-            disabled={!isConnected}
-          >
-            Disparar C3
-          </button>
-          <button
-            className="admin-button shoot"
-            onClick={() => onShootBullet(4)}
-            disabled={!isConnected}
-          >
-            Disparar C4
-          </button>
-        </div>
-        
-        <div className="button-group">
-          <button
-            className="admin-button special"
-            onClick={onShootAll}
-            disabled={!isConnected}
-          >
-            🚀 Disparar Todos
-          </button>
-        </div>
-      </div>
-      
-      {/* Sección de control */}
-      <div className="admin-section">
-        <h3>⚙️ Control del Juego</h3>
-        <div className="button-group">
-          <button
-            className="admin-button reset"
-            onClick={onReset}
-            disabled={!isConnected}
-          >
-            🔄 Reiniciar Juego
-          </button>
-        </div>
-      </div>
-      
-      {/* Estado del juego */}
-      <div className="status-display">
-        <h3 style={{ color: 'white', marginBottom: '15px' }}>📊 Estado del Juego</h3>
-        
-        <div className="status-item">
-          <span>❤️ Vida de la Base:</span>
-          <span className="status-value" style={{ color: gameState.baseHealth > 50 ? '#27ae60' : '#e74c3c' }}>
-            {gameState.baseHealth}/100
-          </span>
-        </div>
-        
-        <div className="status-item">
-          <span>⭐ Puntuación:</span>
-          <span className="status-value" style={{ color: '#f39c12' }}>
-            {gameState.score}
-          </span>
-        </div>
-        
-        <div className="status-item">
-          <span>🎮 Estado:</span>
-          <span className="status-value" style={{ color: gameState.isGameOver ? '#e74c3c' : '#27ae60' }}>
-            {gameState.isGameOver ? 'Game Over' : 'Jugando'}
-          </span>
-        </div>
-        
-        {/* Estado de carriles */}
-        <div style={{ marginTop: '15px' }}>
-          <h4 style={{ color: 'white', marginBottom: '10px' }}>🛣️ Estado de Carriles:</h4>
-          {gameState.lanes.map((lane, index) => (
-            <div key={lane.id} className="status-item">
-              <span>Carril {index + 1}:</span>
-              <span className="status-value">
-                👾 {lane.enemies.length} | 🔫 {lane.bullets.length}
-              </span>
+        <h3>⚡ Controles de Energía</h3>
+        <div className="energy-controls">
+          {gameState.lanes.map(lane => (
+            <div key={lane.id} className="energy-control-lane">
+              <span>Carril {lane.id} ({lane.team ? lane.team.name : 'N/A'}):</span>
+              <input
+                type="number"
+                placeholder="Energía"
+                className="energy-input"
+                value={energyInputs[lane.id]}
+                onChange={(e) => handleEnergyInputChange(lane.id, e.target.value)}
+              />
+              <button
+                className="admin-button"
+                onClick={() => handleSetEnergyClick(lane.id)}
+                disabled={!isConnected}
+              >
+                Establecer
+              </button>
             </div>
           ))}
         </div>
       </div>
-      
-      <div style={{
-        marginTop: '20px',
-        textAlign: 'center',
-        color: 'white',
-        fontSize: '16px'
-      }}>
-        <p>🔗 <a
-          href="/game"
-          style={{ color: '#3498db', textDecoration: 'underline' }}
-          target="_blank"
-        >
-          Ver Juego en Pantalla Completa
-        </a></p>
+      <div className="admin-section">
+        <h3>📹 Conexión TikTok Live</h3>
+        <div className="tiktok-connect">
+          <input
+            type="text"
+            placeholder="@usuario de TikTok"
+            className="tiktok-user-input"
+            value={tiktokUser}
+            onChange={(e) => setTiktokUser(e.target.value)}
+            disabled={tiktokConnection.isConnected}
+          />
+          <button
+            className="admin-button tiktok"
+            onClick={onConnectTikTok}
+            disabled={!isConnected || !tiktokUser || tiktokConnection.isConnected}
+          >
+            {tiktokConnection.isConnecting ? 'Conectando...' : 'Conectar'}
+          </button>
+        </div>
+        <div className={`connection-status ${tiktokConnection.status}`}>
+          {tiktokConnection.message}
+        </div>
       </div>
     </div>
   );

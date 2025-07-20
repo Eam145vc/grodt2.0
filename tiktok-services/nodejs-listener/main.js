@@ -1,19 +1,16 @@
-const { TikTokLiveConnection, WebcastEvent } = require('tiktok-live-connector');
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 const axios = require('axios');
+const express = require('express');
 
 // --- Configuración ---
-// El unique_id del usuario de TikTok a monitorear.
-const TIKTOK_UNIQUE_ID = process.env.TIKTOK_UNIQUE_ID || 'miUsuarioTikTok';
+const CENTRAL_BRAIN_URL = process.env.CENTRAL_BRAIN_URL || 'http://localhost:5001/event';
+const PORT = process.env.NODEJS_LISTENER_PORT || 5002;
 
-// La URL del "Cerebro Central" que recibirá los eventos.
-const CENTRAL_BRAIN_URL = process.env.CENTRAL_BRAIN_URL || 'http://localhost:3000/event';
+// --- Cliente de TikTok Live (se inicializará bajo demanda) ---
+let connection = null;
+let availableGifts = {};
 
-// --- Función de Ayuda ---
-/**
- * Envía un evento al Cerebro Central a través de una solicitud HTTP POST.
- * @param {string} eventType - El tipo de evento (ej. "comment", "gift").
- * @param {object} data - El payload del evento.
- */
+// --- Funciones de Ayuda ---
 const sendToCentralBrain = async (eventType, data) => {
     try {
         const payload = {
@@ -28,69 +25,134 @@ const sendToCentralBrain = async (eventType, data) => {
     }
 };
 
-// --- Cliente de TikTok Live ---
-// Crear una nueva instancia de conexión y pasar el uniqueId.
-const connection = new TikTokLiveConnection(TIKTOK_UNIQUE_ID, {
-    // Habilitar información extendida de regalos para obtener nombres y detalles.
-    enableExtendedGiftInfo: true
-});
-
-// --- Manejadores de Eventos ---
-connection.on(WebcastEvent.CONNECTED, state => {
-    console.log(`Conectado a la sala ${state.roomId}`);
-    sendToCentralBrain('connect', { unique_id: TIKTOK_UNIQUE_ID, roomId: state.roomId });
-});
-
-connection.on(WebcastEvent.DISCONNECTED, () => {
-    console.log('Desconectado.');
-});
-
-connection.on(WebcastEvent.CHAT, data => {
-    console.log(`Comentario de ${data.user.uniqueId}: ${data.comment}`);
-    sendToCentralBrain('comment', {
-        user: data.user.uniqueId,
-        comment: data.comment
+// --- Lógica de Conexión de TikTok ---
+const runTikTokClient = (tiktokUser) => {
+    console.log(`Iniciando conexión con @${tiktokUser}...`);
+    connection = new TikTokLiveConnection(tiktokUser, {
+        enableExtendedGiftInfo: true
     });
-});
 
-connection.on(WebcastEvent.GIFT, data => {
-    // Solo procesar el evento final del "streak" para evitar duplicados.
-    if (data.giftType === 1 && !data.repeatEnd) {
-        // El "streak" de regalos está en progreso, se puede ignorar o manejar como un evento temporal.
-        return;
-    }
-    console.log(`${data.user.uniqueId} envió ${data.repeatCount}x "${data.giftName}"`);
-    sendToCentralBrain('gift', {
-        user: data.user.uniqueId,
-        gift_name: data.giftName,
-        count: data.repeatCount
-    });
-});
+    addEventListeners(connection, tiktokUser);
 
-connection.on(WebcastEvent.LIKE, data => {
-    console.log(`${data.user.uniqueId} envió ${data.likeCount} likes. Total: ${data.totalLikeCount}`);
-    sendToCentralBrain('like', {
-        user: data.user.uniqueId,
-        count: data.likeCount,
-        total: data.totalLikeCount
-    });
-});
-
-connection.on(WebcastEvent.FOLLOW, data => {
-    console.log(`${data.user.uniqueId} ahora sigue al anfitrión.`);
-    sendToCentralBrain('follow', { user: data.user.uniqueId });
-});
-
-connection.on(WebcastEvent.ERROR, err => {
-    console.error('Error en la conexión:', err);
-});
-
-// --- Ejecución Principal ---
-const startListener = () => {
-    console.log('Iniciando el listener de Node.js para TikTok...');
     connection.connect().catch(err => {
-        console.error('Fallo al conectar:', err);
+        console.error(`Fallo al conectar con @${tiktokUser}:`, err);
     });
 };
 
-startListener();
+// --- Manejadores de Eventos ---
+const addEventListeners = (client, tiktokUser) => {
+    client.on('connected', async (state) => {
+        console.log(`Conectado a la sala de @${tiktokUser} (ID: ${state.roomId})`);
+        sendToCentralBrain('status', {
+            status: 'connected',
+            user: tiktokUser,
+            message: `Conectado a @${tiktokUser}`
+        });
+
+        // Obtener la lista de regalos disponibles para esta sala
+        try {
+            const gifts = await client.fetchAvailableGifts();
+            gifts.forEach(gift => {
+                availableGifts[gift.id] = {
+                    name: gift.name,
+                    value: gift.diamond_count
+                };
+            });
+            console.log(`Lista de ${gifts.length} regalos obtenida y almacenada.`);
+        } catch (err) {
+            console.error('No se pudo obtener la lista de regalos:', err);
+        }
+    });
+
+    client.on('disconnected', () => {
+        console.log('Desconectado.');
+        sendToCentralBrain('status', {
+            status: 'disconnected',
+            message: 'Desconectado del Live'
+        });
+    });
+
+    client.on('chat', data => {
+        console.log(`Comentario de ${data.user.uniqueId}: ${data.comment}`);
+        sendToCentralBrain('comment', {
+            user: data.user.uniqueId.toLowerCase(),
+            comment: data.comment
+        });
+    });
+
+    client.on('gift', data => {
+        if (data.giftType === 1 && !data.repeatEnd) {
+            return;
+        }
+
+        const giftInfo = availableGifts[data.giftId];
+        const giftName = giftInfo ? giftInfo.name : `ID ${data.giftId}`;
+        const giftValue = giftInfo ? giftInfo.value : 0;
+
+        console.log(`${data.user.uniqueId} envió ${data.repeatCount}x "${giftName}" (ID: ${data.giftId}, Valor: ${giftValue})`);
+        
+        sendToCentralBrain('gift', {
+            user: data.user.uniqueId.toLowerCase(),
+            gift_id: data.giftId,
+            gift_name: giftName,
+            count: data.repeatCount,
+            value: giftValue
+        });
+    });
+
+    client.on('like', data => {
+        console.log(`${data.user.uniqueId} envió ${data.likeCount} likes. Total: ${data.totalLikeCount}`);
+        sendToCentralBrain('like', {
+            user: data.user.uniqueId.toLowerCase(),
+            count: data.likeCount,
+            total: data.totalLikeCount
+        });
+    });
+
+    client.on('follow', data => {
+        console.log(`${data.uniqueId} ahora sigue al anfitrión.`);
+        sendToCentralBrain('follow', { user: data.uniqueId });
+    });
+
+    client.on('error', err => {
+        console.error('Error en la conexión:', err);
+        sendToCentralBrain('status', {
+            status: 'error',
+            message: err.toString()
+        });
+    });
+};
+
+// --- Servidor Express ---
+const app = express();
+app.use(express.json());
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+app.post('/connect', (req, res) => {
+    const { tiktokUser } = req.body;
+
+    if (!tiktokUser) {
+        return res.status(400).json({ error: 'tiktokUser es requerido' });
+    }
+
+    if (connection && connection.isConnected()) {
+        console.log('Ya hay una conexión activa. Desconectando primero...');
+        connection.disconnect();
+        connection = null;
+    }
+
+    runTikTokClient(tiktokUser);
+
+    res.status(200).json({
+        status: 'ok',
+        message: `Intentando conectar a @${tiktokUser}`
+    });
+});
+
+// --- Ejecución Principal ---
+app.listen(PORT, () => {
+    console.log(`Listener de Node.js escuchando en el puerto ${PORT}`);
+});

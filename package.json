@@ -1,0 +1,24 @@
+{
+  "name": "tower-defense-diagnostics",
+  "version": "1.0.0",
+  "description": "A package for running diagnostic scripts.",
+  "main": "index.js",
+  "scripts": {
+    "diagnose-tiktok": "node scripts/diagnose-tiktok-connection.js",
+    "start:dev": "concurrently --names \"SERVER,CLIENT,BRAIN,NODE,PYTHON\" --prefix-colors \"bgBlue.bold,bgGreen.bold,bgMagenta.bold,bgCyan.bold,bgYellow.bold\" \"npm:start:server\" \"npm:start:client\" \"npm:start:brain\" \"npm:start:node-listener\" \"npm:start:python-listener\"",
+    "start:server": "npm run dev --prefix server",
+    "start:client": "npm start --prefix client",
+    "start:brain": "node tiktok-services/central-brain/index.js",
+    "start:node-listener": "node tiktok-services/nodejs-listener/main.js",
+    "start:python-listener": "start-unbuffered.bat"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "npm-run-all": "^4.1.5"
+  }
+}

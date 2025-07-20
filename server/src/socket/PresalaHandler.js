@@ -5,36 +5,9 @@ class PresalaHandler {
     this.gameState = gameState;
   }
 
-  handleJoinTeam(userId, teamName) {
-    const normalizedTeamName = teamName.toLowerCase();
-
-    if (!PRESALA_CONFIG.ALLOWED_TEAMS.includes(normalizedTeamName)) {
-      console.log(`Intento de unirse a un equipo no válido: ${teamName}`);
-      return;
-    }
-
-    const { teams, userTeam } = this.gameState.presala;
-
-    // Si el usuario ya estaba en un equipo, removerlo del equipo anterior
-    if (userTeam[userId]) {
-      const oldTeam = userTeam[userId];
-      if (teams[oldTeam]) {
-        teams[oldTeam].members.delete(userId);
-      }
-    }
-
-    // Añadir al nuevo equipo
-    if (!teams[normalizedTeamName]) {
-      teams[normalizedTeamName] = {
-        points: 0,
-        members: new Set()
-      };
-    }
-    teams[normalizedTeamName].members.add(userId);
-    userTeam[userId] = normalizedTeamName;
-
-    console.log(`Usuario ${userId} se ha unido al equipo ${normalizedTeamName}`);
-  }
+  // La lógica para unirse a un equipo ha sido centralizada en GameState.js
+  // para permitir que funcione tanto en la presala como en el juego principal.
+  // Este método ya no es necesario aquí.
 }
 
 module.exports = PresalaHandler;

@@ -108,3 +108,26 @@ export const TIKTOK_GIFTS = [
   { name: 'It’s corn', lane: 4 },
   { name: 'Heart', lane: 4 },
 ];
+
+export const ALLOWED_TEAMS = [
+  'argentina',
+  'bolivia',
+  'chile',
+  'colombia',
+  'costa rica',
+  'cuba',
+  'ecuador',
+  'el salvador',
+  'guatemala',
+  'honduras',
+  'mexico',
+  'nicaragua',
+  'panama',
+  'paraguay',
+  'peru',
+  'puerto rico',
+  'republica dominicana',
+  'uruguay',
+  'venezuela',
+  'brasil'
+];

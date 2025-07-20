@@ -1,38 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
-import { TIKTOK_GIFTS } from '../../utils/constants';
+import { TIKTOK_GIFTS, ALLOWED_TEAMS } from '../../utils/constants';
 import GameCanvas from '../Game/GameCanvas';
+import AdminPanel from './AdminPanel';
 
 const AdminPage = () => {
   const socketRef = useRef(null);
-  const [gameState, setGameState] = useState({
-    lanes: [
-      { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false }
-    ],
-    waveSystem: {
-      isActive: false,
-      isPaused: false,
-      currentWave: 0,
-      timeRemaining: 15,
-      maxTime: 15
-    },
-    globalGameOver: false,
-    winner: null,
-    enemyTypes: {},
-    activePowerUps: {
-      turrets: [],
-      freezeBalls: [],
-      doubleBullets: []
-    }
-  });
+  const [gameState, setGameState] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSocketReady, setIsSocketReady] = useState(false);
   const [selectedGifts, setSelectedGifts] = useState({ 1: '', 2: '', 3: '', 4: '' });
   const [coinAmounts, setCoinAmounts] = useState({ 1: 10, 2: 10, 3: 10, 4: 10 });
   const [powerUpLane, setPowerUpLane] = useState(1);
   const [teamCommand, setTeamCommand] = useState('/equipo colombia');
+  const [presalaUserId, setPresalaUserId] = useState('user123');
+  const [presalaTeam, setPresalaTeam] = useState(ALLOWED_TEAMS[0]);
+  const [presalaGiftAmount, setPresalaGiftAmount] = useState(10);
+  const [tiktokUser, setTiktokUser] = useState('');
+  const [tiktokConnection, setTiktokConnection] = useState({
+    isConnected: false,
+    isConnecting: false,
+    message: 'Desconectado del Live',
+    status: 'disconnected'
+  });
 
   useEffect(() => {
     // Activar el scroll en el body cuando esta página esté activa
@@ -51,6 +41,7 @@ const AdminPage = () => {
     
     socketRef.current.on('connect', () => {
       setIsConnected(true);
+      setIsSocketReady(true);
       console.log('Admin conectado al servidor');
     });
     
@@ -62,6 +53,16 @@ const AdminPage = () => {
     socketRef.current.on('gameState', (newGameState) => {
       // Clonar el estado para forzar una nueva renderización
       setGameState(JSON.parse(JSON.stringify(newGameState)));
+    });
+
+    socketRef.current.on('tiktok-connection-status', (data) => {
+      console.log("Received tiktok-connection-status", data);
+      setTiktokConnection({
+        isConnected: data.status === 'connected',
+        isConnecting: false,
+        message: data.message,
+        status: data.status
+      });
     });
     
     return () => {
@@ -163,6 +164,42 @@ const AdminPage = () => {
     }
   };
 
+  const handleJoinTeam = () => {
+    if (socketRef.current && isConnected && presalaUserId && presalaTeam) {
+      socketRef.current.emit('join-team', { userId: presalaUserId, teamName: presalaTeam });
+    }
+  };
+
+  const handleSendLike = () => {
+    if (socketRef.current && isConnected && presalaUserId) {
+      socketRef.current.emit('tiktok-event', {
+        event_type: 'like',
+        data: { user: presalaUserId, count: 1 }
+      });
+    }
+  };
+
+  const handleSendGift = () => {
+    if (socketRef.current && isConnected && presalaUserId && presalaGiftAmount > 0) {
+      socketRef.current.emit('tiktok-event', {
+        event_type: 'gift',
+        data: { user: presalaUserId, count: presalaGiftAmount }
+      });
+    }
+  };
+
+  const handleConnectTikTok = () => {
+    if (socketRef.current && isConnected && tiktokUser) {
+      setTiktokConnection({
+        ...tiktokConnection,
+        isConnecting: true,
+        status: 'connecting',
+        message: `Enviando orden para conectar con @${tiktokUser}...`
+      });
+      socketRef.current.emit('connect-tiktok', { tiktokUser });
+    }
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -190,6 +227,10 @@ const AdminPage = () => {
 
   const enemyTypes = ['basic', 'mini', 'special1', 'tank', 'sniper', 'boss'];
 
+  if (!gameState) {
+    return <div className="loading-admin">Cargando panel de administración...</div>;
+  }
+
   return (
     <div className="admin-layout-container">
       <div className="admin-grid">
@@ -200,6 +241,26 @@ const AdminPage = () => {
 
         <div className="admin-grid-col-1">
           {/* Columna de Controles Principales */}
+          {isSocketReady ? (
+            <AdminPanel
+              gameState={gameState}
+              isConnected={isConnected}
+              onSpawnEnemy={spawnEnemy}
+              onShootBullet={shootBullet}
+              onShootAll={shootAllBullets}
+              onReset={stopWaves}
+              onConnectTikTok={handleConnectTikTok}
+              tiktokConnection={tiktokConnection}
+              setTiktokUser={setTiktokUser}
+              tiktokUser={tiktokUser}
+              socket={socketRef.current}
+            />
+          ) : (
+            <div className="admin-section">
+              <h3>Panel de Administrador</h3>
+              <p>Estableciendo conexión con el servidor...</p>
+            </div>
+          )}
           <div className={`connection-status-v2 ${isConnected ? 'connected' : 'disconnected'}`}>
             <div className="connection-indicator">{isConnected ? '🟢' : '🔴'}</div>
             <span>{isConnected ? 'Conectado al servidor' : 'Desconectado del servidor'}</span>
@@ -453,6 +514,70 @@ const AdminPage = () => {
               />
               <button className="admin-button-v2" onClick={handleTeamCommand} disabled={!isConnected}>
                 Enviar Comando
+              </button>
+            </div>
+          </div>
+          <div className="admin-section-v2">
+            <h3 className="section-title">🎯 Control de Presala</h3>
+            <div className="powerup-controls">
+              <button className="admin-button-v2" onClick={() => socketRef.current?.emit('startPresala')} disabled={!isConnected}>
+                🚀 Iniciar Presala
+              </button>
+              <button className="admin-button-v2" onClick={() => socketRef.current?.emit('stopPresala')} disabled={!isConnected}>
+                🛑 Detener Presala
+              </button>
+              <button className="admin-button-v2" onClick={() => socketRef.current?.emit('resetPresala')} disabled={!isConnected}>
+                🔄 Reset Presala
+              </button>
+            </div>
+            <div className="text-center mt-3">
+              <p className="text-sm text-gray-300">
+                🔗 <a href="/presala" className="game-link" target="_blank" rel="noopener noreferrer">
+                  Ver Pantalla de Presala
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="admin-section-v2">
+          <h3 className="section-title">📱 Simulación de TikTok en Presala</h3>
+          <div className="powerup-section">
+            <h4 className="powerup-title">Unirse a Equipo</h4>
+            <div className="powerup-controls">
+              <input
+                type="text"
+                placeholder="User ID"
+                value={presalaUserId}
+                onChange={(e) => setPresalaUserId(e.target.value)}
+                className="admin-input-v2"
+                disabled={!isConnected}
+              />
+              <select value={presalaTeam} onChange={(e) => setPresalaTeam(e.target.value)} className="admin-select-v2" disabled={!isConnected}>
+                {ALLOWED_TEAMS.map(team => (
+                  <option key={team} value={team}>{team.charAt(0).toUpperCase() + team.slice(1)}</option>
+                ))}
+              </select>
+              <button className="admin-button-v2" onClick={handleJoinTeam} disabled={!isConnected || !presalaUserId || !presalaTeam}>
+                Unirse
+              </button>
+            </div>
+          </div>
+          <div className="powerup-section">
+            <h4 className="powerup-title">Simular Eventos</h4>
+            <div className="powerup-controls">
+              <button className="admin-button-v2 like" onClick={handleSendLike} disabled={!isConnected || !presalaUserId}>
+                👍 Simular Like
+              </button>
+              <input
+                type="number"
+                value={presalaGiftAmount}
+                onChange={(e) => setPresalaGiftAmount(parseInt(e.target.value, 10) || 1)}
+                className="admin-input-v2"
+                disabled={!isConnected}
+              />
+              <button className="admin-button-v2 gift" onClick={handleSendGift} disabled={!isConnected || !presalaUserId || presalaGiftAmount <= 0}>
+                🎁 Enviar Regalo (Monedas)
               </button>
             </div>
           </div>

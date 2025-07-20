@@ -176,18 +176,41 @@ const GameCanvas = ({ gameState }) => {
           });
         }
         
+        // Dibujar torretas
+        const turretY = canvas.height - 35;
+        
+        // Torreta Estándar (siempre visible)
+        ctx.fillStyle = '#7f8c8d';
+        ctx.fillRect(laneX - 15, turretY, 30, 15);
+        ctx.fillStyle = '#95a5a6';
+        ctx.fillRect(laneX - 5, turretY - 10, 10, 10);
+
+        // Torreta de Poder (condicional)
+        if (lane.doubleBulletsActive) {
+            ctx.fillStyle = '#f1c40f'; // Color dorado
+            ctx.fillRect(laneX - 25, turretY - 20, 50, 20);
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(laneX - 8, turretY - 35, 16, 15);
+        }
+
         // Dibujar balas
         lane.bullets.forEach(bullet => {
           if (bullet.alive) {
-            ctx.fillStyle = '#f39c12';
-            ctx.beginPath();
-            ctx.arc(laneX, bullet.y, 5, 0, Math.PI * 2);
-            ctx.fill();
+            const bulletSize = bullet.isDouble ? 8 : 5;
+            const bulletColor = bullet.isDouble ? '#f1c40f' : '#3498db';
             
-            // Efecto de brillo
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = bulletColor;
+            ctx.shadowColor = bulletColor;
+            ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.arc(laneX - 2, bullet.y - 2, 2, 0, Math.PI * 2);
+            ctx.arc(bullet.x + (laneIndex * laneWidth), bullet.y, bulletSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Efecto de brillo
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(bullet.x + (laneIndex * laneWidth) - 2, bullet.y - 2, bulletSize / 2, 0, Math.PI * 2);
             ctx.fill();
           }
         });

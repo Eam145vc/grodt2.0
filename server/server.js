@@ -93,24 +93,13 @@ const ENEMY_TYPES = {
   }
 };
 
-// Estado global del juego
-let gameState = {
-  lanes: [
-    { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-    { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-    { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false },
-    { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], isGameOver: false }
-  ],
-  waveSystem: {
-    isActive: false,
-    isPaused: false,
-    currentWave: 0,
-    timeRemaining: 15,
-    maxTime: 15
-  },
-  globalGameOver: false,
-  winner: null
-};
+const GameState = require('./src/models/GameState');
+const TikTokHandler = require('./src/socket/TikTokHandler');
+
+// Instancia única del estado del juego y del manejador
+const gameState = new GameState();
+const tikTokHandler = new TikTokHandler(gameState);
+
 
 // Variables separadas para los timers
 let waveTimer = null;
@@ -477,201 +466,49 @@ const checkWinner = () => {
 
 // Lógica del juego
 const updateGame = () => {
-  if (gameState.globalGameOver) return;
-
-  gameState.lanes.forEach(lane => {
-    if (lane.isGameOver) return;
-
-    // Asegurar que los arrays existan
-    if (!lane.enemies) lane.enemies = [];
-    if (!lane.bullets) lane.bullets = [];
-    if (!lane.enemyProjectiles) lane.enemyProjectiles = [];
-
-    // Mover enemigos
-    lane.enemies.forEach(enemy => {
-      if (enemy.alive) {
-        enemy.y += enemy.speed;
-        
-        // Verificar si llegó a la base
-        if (enemy.y >= 580) {
-          lane.baseHealth -= enemy.damage;
-          enemy.alive = false;
-          
-          // Limpiar timer de sniper si es sniper
-          if (enemy.type === 'sniper' && sniperTimers.has(enemy.id)) {
-            clearInterval(sniperTimers.get(enemy.id));
-            sniperTimers.delete(enemy.id);
-          }
-          
-          if (lane.baseHealth <= 0) {
-            lane.isGameOver = true;
-            lane.baseHealth = 0;
-            checkWinner();
-          }
-        }
-      }
-    });
-    
-    // Mover proyectiles de enemigos (sniper)
-    lane.enemyProjectiles.forEach(projectile => {
-      if (projectile.alive) {
-        projectile.y += projectile.speed;
-        
-        // Si llega a la base
-        if (projectile.y >= 580) {
-          lane.baseHealth -= projectile.damage;
-          projectile.alive = false;
-          
-          if (lane.baseHealth <= 0) {
-            lane.isGameOver = true;
-            lane.baseHealth = 0;
-            checkWinner();
-          }
-        }
-      }
-    });
-    
-    // Mover balas
-    lane.bullets.forEach(bullet => {
-      if (bullet.alive) {
-        bullet.y -= bullet.speed;
-        
-        // Verificar colisiones con enemigos
-        lane.enemies.forEach(enemy => {
-          if (enemy.alive && 
-              Math.abs(bullet.x - enemy.x) < (enemy.size + 10) && 
-              Math.abs(bullet.y - enemy.y) < (enemy.size + 10)) {
-            
-            enemy.health -= bullet.damage;
-            bullet.alive = false;
-            
-            if (enemy.health <= 0) {
-              enemy.alive = false;
-              
-              // Limpiar timer de sniper si es sniper
-              if (enemy.type === 'sniper' && sniperTimers.has(enemy.id)) {
-                clearInterval(sniperTimers.get(enemy.id));
-                sniperTimers.delete(enemy.id);
-              }
-              
-              // Manejar división del boss
-              if (enemy.type === 'boss') {
-                handleBossDeath(enemy);
-              }
-            }
-          }
-        });
-        
-        // Eliminar balas que salieron de pantalla
-        if (bullet.y < 0) {
-          bullet.alive = false;
-        }
-      }
-    });
-    
-    // Limpiar objetos muertos
-    lane.enemies = lane.enemies.filter(e => e.alive);
-    lane.bullets = lane.bullets.filter(b => b.alive);
-    lane.enemyProjectiles = lane.enemyProjectiles.filter(p => p.alive);
-  });
+  // Ahora solo llamamos al update del GameState
+  gameState.updateGame();
 };
 
 // Función para crear una versión limpia del gameState
 const getCleanGameState = () => {
-  return {
-    lanes: gameState.lanes,
-    waveSystem: gameState.waveSystem,
-    globalGameOver: gameState.globalGameOver,
-    winner: gameState.winner,
-    enemyTypes: ENEMY_TYPES  // ← ESTO ES CRÍTICO
-  };
+  return gameState.getState();
 };
 
 // Socket.IO eventos
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
   
+  // Enviar estado inicial al conectar
   socket.emit('gameState', getCleanGameState());
   
-  // Spawn enemigo manual - por tipo y carril específico
-  socket.on('spawnEnemy', (data) => {
-    const { laneId, enemyType } = data;
-    const lane = gameState.lanes.find(l => l.id === laneId);
-    if (lane && !lane.isGameOver && ENEMY_TYPES[enemyType.toUpperCase()]) {
-      if (!lane.enemies) lane.enemies = [];
-      
-      if (enemyType.toLowerCase() === 'mini') {
-        // Spawn de 20 minis
-        for (let i = 0; i < ENEMY_TYPES.MINI.groupSize; i++) {
-          const enemy = createEnemy(laneId, enemyType, gameState.waveSystem.currentWave);
-          if (enemy) {
-            enemy.y = i * -20;
-            lane.enemies.push(enemy);
-          }
-        }
-      } else {
-        const enemy = createEnemy(laneId, enemyType, gameState.waveSystem.currentWave);
-        if (enemy) {
-          lane.enemies.push(enemy);
-        }
-      }
-      io.emit('gameState', getCleanGameState());
-    }
+  // --- EVENTOS DE ADMINISTRADOR ---
+  socket.on('admin:setEnergy', (data) => {
+    // Llamamos directamente al método del handler que ya tiene la lógica
+    tikTokHandler.handleAdminEvent('admin:setEnergy', data);
+    // No es necesario emitir aquí, el bucle principal ya lo hace
   });
-  
-  // Disparar bala
-  socket.on('shootBullet', (laneId) => {
-    const bullet = createBullet(laneId);
-    if (bullet) {
-      const lane = gameState.lanes.find(l => l.id === laneId);
-      if (lane && !lane.isGameOver) {
-        if (!lane.bullets) lane.bullets = [];
-        lane.bullets.push(bullet);
-        io.emit('gameState', getCleanGameState());
-      }
-    }
-  });
-  
-  // Disparar todas las balas
-  socket.on('shootAllBullets', () => {
-    gameState.lanes.forEach(lane => {
-      if (!lane.isGameOver) {
-        const bullet = createBullet(lane.id);
-        if (bullet) {
-          if (!lane.bullets) lane.bullets = [];
-          lane.bullets.push(bullet);
-        }
-      }
-    });
-    io.emit('gameState', getCleanGameState());
-  });
-  
-  // Controles de oleadas
+
+  // --- EVENTOS DEL JUEGO (ej. desde el panel de admin) ---
   socket.on('startWaves', () => {
-    if (!gameState.waveSystem.isActive) {
-      startWave();
-    } else if (gameState.waveSystem.isPaused) {
-      resumeWaves();
-    }
-    io.emit('gameState', getCleanGameState());
+    gameState.startWaves();
   });
-  
+
   socket.on('pauseWaves', () => {
-    pauseWaves();
-    io.emit('gameState', getCleanGameState());
+    gameState.pauseWaves();
   });
-  
+
   socket.on('stopWaves', () => {
-    stopWaves();
-    io.emit('gameState', getCleanGameState());
+    gameState.stopWaves();
   });
-  
+
   socket.on('forceNextWave', () => {
-    console.log('Forzando siguiente oleada...');
-    clearTimers();
-    startWave();
-    io.emit('gameState', getCleanGameState());
+    gameState.forceNextWave();
   });
+
+  // --- EVENTOS DE TIKTOK (simulados o reales) ---
+  // Aquí es donde el central-brain se conectaría
+  // Por ahora, podemos usarlo para depuración si fuera necesario
 
   socket.on('disconnect', () => {
     console.log('Cliente desconectado:', socket.id);

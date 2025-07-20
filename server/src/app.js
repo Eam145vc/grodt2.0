@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
-const SocketHandler = require('./socket/socketHandler');
+const SocketHandler = require('./socket/SocketHandler');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,7 +10,7 @@ const server = http.createServer(app);
 // Configuración de CORS para Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:5001"],
+    origin: ["http://localhost:3000", "http://localhost:5001", "http://localhost:5004"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -18,7 +18,7 @@ const io = socketIo(server, {
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5001"],
+  origin: ["http://localhost:3000", "http://localhost:5001", "http://localhost:5004"],
   credentials: true
 }));
 app.use(express.json());
@@ -53,8 +53,8 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(`🚀 Servidor Tower Defense corriendo en puerto ${PORT}`);
-  console.log(`📊 Panel Admin: http://localhost:3000/admin`);
-  console.log(`🎮 Juego: http://localhost:3000/game`);
+  console.log(`📊 Panel Admin: http://localhost:5004/admin`);
+  console.log(`🎮 Juego: http://localhost:5004/game`);
   console.log(`📈 Stats: http://localhost:${PORT}/stats`);
 });
 

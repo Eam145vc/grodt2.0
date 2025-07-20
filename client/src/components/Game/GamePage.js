@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import GameUI from './GameUI';
 
 const GamePage = () => {
   const canvasRef = useRef(null);
   const socketRef = useRef(null);
   const [gameState, setGameState] = useState({
     lanes: [
-      { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false },
-      { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false }
+      { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false, team: null, energy: 0 },
+      { id: 2, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false, team: null, energy: 0 },
+      { id: 3, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false, team: null, energy: 0 },
+      { id: 4, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false, team: null, energy: 0 }
     ],
     waveSystem: {
       isActive: false,
@@ -21,29 +22,25 @@ const GamePage = () => {
     globalGameOver: false,
     winner: null,
     enemyTypes: {},
-    activePowerUps: { // Añadir estado para power-ups activos
+    activePowerUps: {
       turrets: [],
       freezeBalls: [],
       doubleBullets: []
     }
   });
-  const [isConnected, setIsConnected] = useState(false);
-
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000');
-    
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+    socketRef.current = io(socketUrl);
+
     socketRef.current.on('connect', () => {
-      setIsConnected(true);
       console.log('Conectado al servidor');
     });
     
     socketRef.current.on('disconnect', () => {
-      setIsConnected(false);
       console.log('Desconectado del servidor');
     });
     
     socketRef.current.on('gameState', (newGameState) => {
-      // Clonar el estado para forzar una nueva renderización
       setGameState(JSON.parse(JSON.stringify(newGameState)));
     });
     
@@ -110,54 +107,22 @@ const GamePage = () => {
         ctx.shadowBlur = 6;
         ctx.fillText(`P${laneIndex + 1}`, laneX, 30);
         ctx.shadowBlur = 0;
+
+        // Nombre del equipo
+        if (lane.team) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(lane.team.toUpperCase(), laneX, 50);
+        }
         
         // Indicador de balas dobles
         if (lane.doubleBulletsActive) {
           ctx.fillStyle = '#8a2be2';
           ctx.font = 'bold 12px Arial';
-          ctx.fillText('DOBLE', laneX, 50);
+          ctx.fillText('DOBLE', laneX, 70);
         }
 
-        // Vida de la base con barra visual
-        const baseY = canvas.height - 60;
-        const barWidth = laneWidth - 20;
-        const barHeight = 12;
-        const barX = x + 10;
-        
-        // Fondo de la barra
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(barX, baseY, barWidth, barHeight);
-        
-        // Barra de vida
-        const healthPercent = lane.baseHealth / 100;
-        const healthWidth = barWidth * healthPercent;
-        const healthColor = healthPercent > 0.6 ? '#00ff88' :
-                           healthPercent > 0.3 ? '#ffaa00' : '#ff4444';
-        
-        ctx.fillStyle = healthColor;
-        ctx.fillRect(barX, baseY, healthWidth, barHeight);
-        
-        // Texto de vida
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Arial';
-        ctx.fillText(`${lane.baseHealth}/100`, laneX, baseY + 25);
-
-        // Indicadores de Oleada y Tiempo debajo de la salud
-        const indicatorsY = baseY + 45;
-        ctx.font = 'bold 10px "Courier New"';
-        ctx.fillStyle = 'rgba(0, 255, 136, 0.8)';
-        
-        // Oleada
-        ctx.textAlign = 'center';
-        ctx.fillText('OLEADA', laneX - barWidth / 4, indicatorsY - 10);
-        ctx.font = 'bold 14px "Courier New"';
-        ctx.fillText(gameState.waveSystem.currentWave, laneX - barWidth / 4, indicatorsY + 5);
-
-        // Tiempo
-        ctx.font = 'bold 10px "Courier New"';
-        ctx.fillText('TIEMPO', laneX + barWidth / 4, indicatorsY - 10);
-        ctx.font = 'bold 14px "Courier New"';
-        ctx.fillText(formatTime(gameState.waveSystem.timeRemaining), laneX + barWidth / 4, indicatorsY + 5);
         
         // Game Over overlay para carril
         if (lane.isGameOver) {
@@ -517,48 +482,39 @@ const GamePage = () => {
     drawGame();
   }, [gameState]);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatTimeRemaining = (endTime) => {
-    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-    return `${remaining}s`;
-  };
-
   return (
-    <div className="game-viewport">
-      <div className="game-container-vertical">
-
-        {/* Canvas del juego */}
-        <div className="game-canvas-container">
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={600}
-            className="game-canvas-modern"
-          />
-          
-          {/* Overlay de ganador */}
-          {gameState.globalGameOver && (
-            <div className="winner-overlay">
-              {gameState.winner ? (
-                <>
-                  <h1 className="winner-title">🏆 ¡VICTORIA!</h1>
-                  <h2 className="winner-subtitle">Jugador {gameState.winner} Sobrevive</h2>
-                  <p className="winner-score">Oleadas Completadas: {gameState.waveSystem.currentWave}</p>
-                </>
-              ) : (
-                <>
-                  <h1 className="winner-title">💀 ANIQUILACIÓN TOTAL</h1>
-                  <h2 className="winner-subtitle">Todos los defensores han caído</h2>
-                  <p className="winner-score">Oleadas Resistidas: {gameState.waveSystem.currentWave}</p>
-                </>
-              )}
-            </div>
-          )}
+    <div className="game-page-container">
+      <div className="game-viewport">
+        <div className="game-container-vertical">
+          {/* Canvas del juego */}
+          <div className="game-canvas-container">
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={600}
+              className="game-canvas-modern"
+            />
+            <GameUI gameState={gameState} />
+            
+            {/* Overlay de ganador */}
+            {gameState.globalGameOver && (
+              <div className="winner-overlay">
+                {gameState.winner ? (
+                  <>
+                    <h1 className="winner-title">🏆 ¡VICTORIA!</h1>
+                    <h2 className="winner-subtitle">Jugador {gameState.winner} Sobrevive</h2>
+                    <p className="winner-score">Oleadas Completadas: {gameState.waveSystem.currentWave}</p>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="winner-title">💀 ANIQUILACIÓN TOTAL</h1>
+                    <h2 className="winner-subtitle">Todos los defensores han caído</h2>
+                    <p className="winner-score">Oleadas Resistidas: {gameState.waveSystem.currentWave}</p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

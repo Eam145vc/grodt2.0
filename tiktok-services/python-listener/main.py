@@ -1,91 +1,98 @@
 import asyncio
 import os
 import requests
+from flask import Flask, request, jsonify
 from TikTokLive import TikTokLiveClient
-from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent, LikeEvent, FollowEvent
+from TikTokLive.events import ConnectEvent, CommentEvent, DisconnectEvent, LikeEvent, GiftEvent
+from asgiref.wsgi import WsgiToAsgi
 
-# --- Configuración ---
-# El unique_id del usuario de TikTok a monitorear.
-# Asegúrate de que el usuario esté transmitiendo en vivo.
-TIKTOK_UNIQUE_ID = os.environ.get("TIKTOK_UNIQUE_ID", "@miUsuarioTikTok")
-
-# La URL del "Cerebro Central" que recibirá los eventos.
-# Aún no lo hemos creado, pero esta será su dirección.
-CENTRAL_BRAIN_URL = os.environ.get("CENTRAL_BRAIN_URL", "http://localhost:3000/event")
-
-# --- Cliente de TikTok Live ---
-client: TikTokLiveClient = TikTokLiveClient(unique_id=TIKTOK_UNIQUE_ID)
+# --- Configuración Global ---
+CENTRAL_BRAIN_URL = os.environ.get("CENTRAL_BRAIN_URL", "http://localhost:5001/event")
+PORT = int(os.environ.get("PYTHON_LISTENER_PORT", 5003))
+client: TikTokLiveClient = None
+flask_app = Flask(__name__)
+app = WsgiToAsgi(flask_app)
 
 # --- Funciones de Ayuda ---
 def send_to_central_brain(event_type: str, data: dict):
-    """
-    Envía un evento al Cerebro Central a través de una solicitud HTTP POST.
-    """
     try:
-        payload = {
-            "source": "python-listener",
-            "event_type": event_type,
-            "data": data
-        }
-        print(f"Enviando evento al Cerebro Central: {event_type}")
-        response = requests.post(CENTRAL_BRAIN_URL, json=payload, timeout=5)
-        response.raise_for_status()
+        payload = {"source": "python-listener", "event_type": event_type, "data": data}
+        requests.post(CENTRAL_BRAIN_URL, json=payload, timeout=5)
     except requests.exceptions.RequestException as e:
         print(f"Error al enviar el evento al Cerebro Central: {e}")
 
-# --- Manejadores de Eventos ---
-@client.on(ConnectEvent)
+# --- Manejadores de Eventos de TikTok ---
 async def on_connect(event: ConnectEvent):
-    print(f"Conectado a la sala de @{event.unique_id} (Room ID: {client.room_id})")
-    send_to_central_brain("connect", {"unique_id": event.unique_id, "room_id": client.room_id})
+    print(f"Conectado a la sala de @{event.unique_id}")
+    send_to_central_brain("status", {"status": "connected", "user": event.unique_id, "message": f"Conectado a @{event.unique_id}"})
 
-@client.on(CommentEvent)
 async def on_comment(event: CommentEvent):
-    print(f"Comentario de {event.user.nickname}: {event.comment}")
-    send_to_central_brain("comment", {
-        "user": event.user.nickname,
-        "comment": event.comment
-    })
+    print(f"{event.user.nickname} -> {event.comment}")
+    send_to_central_brain("comment", {"user": event.user.unique_id.lower(), "comment": event.comment})
 
-@client.on(GiftEvent)
-async def on_gift(event: GiftEvent):
-    # Se manejan los regalos con "streak" para no enviar eventos duplicados.
-    if event.gift.streakable and not event.streaking:
-        print(f"{event.user.unique_id} envió {event.repeat_count}x \"{event.gift.name}\"")
-        send_to_central_brain("gift", {
-            "user": event.user.unique_id,
-            "gift_name": event.gift.name,
-            "count": event.repeat_count
-        })
-    elif not event.gift.streakable:
-        print(f"{event.user.unique_id} envió \"{event.gift.name}\"")
-        send_to_central_brain("gift", {
-            "user": event.user.unique_id,
-            "gift_name": event.gift.name,
-            "count": 1
-        })
+async def on_disconnect(event: DisconnectEvent):
+    print("Desconectado de TikTok.")
+    send_to_central_brain("status", {"status": "disconnected", "message": "Desconectado del Live"})
 
-@client.on(LikeEvent)
 async def on_like(event: LikeEvent):
-    print(f"{event.user.unique_id} envió {event.like_count} likes. Total: {event.total_like_count}")
-    send_to_central_brain("like", {
-        "user": event.user.unique_id,
-        "count": event.like_count,
-        "total": event.total_like_count
+    print(f"{event.user.nickname} envió {event.count} likes.")
+    send_to_central_brain('like', {
+        "user": event.user.unique_id.lower(),
+        "count": event.count,
+        "total": 0
     })
 
-@client.on(FollowEvent)
-async def on_follow(event: FollowEvent):
-    print(f"{event.user.unique_id} ahora sigue al anfitrión.")
-    send_to_central_brain("follow", {"user": event.user.unique_id})
+async def on_gift(event: GiftEvent):
+    # Si el regalo es parte de una racha, solo actuar cuando la racha termina.
+    if event.gift.streakable and not event.streaking:
+        print(f"{event.user.nickname} envió {event.repeat_count}x \"{event.gift.name}\" (ID: {event.gift.id}, Valor: {event.gift.diamond_count})")
+        send_to_central_brain('gift', {
+            "user": event.user.unique_id.lower(),
+            "gift_id": event.gift.id,
+            "gift_name": event.gift.name,
+            "count": event.repeat_count,
+            "value": event.gift.diamond_count
+        })
+    # Si el regalo no es parte de una racha, procesarlo inmediatamente.
+    elif not event.gift.streakable:
+        print(f"{event.user.nickname} envió \"{event.gift.name}\" (ID: {event.gift.id}, Valor: {event.gift.diamond_count})")
+        send_to_central_brain('gift', {
+            "user": event.user.unique_id.lower(),
+            "gift_id": event.gift.id,
+            "gift_name": event.gift.name,
+            "count": 1,
+            "value": event.gift.diamond_count
+        })
 
-# --- Ejecución Principal ---
-if __name__ == '__main__':
+# --- Lógica del Cliente de TikTok ---
+async def run_tiktok_client(tiktok_user: str):
+    global client
     try:
-        print("Iniciando el listener de Python para TikTok...")
-        # Inicia el cliente. Esto bloqueará el hilo principal.
-        client.run()
-    except KeyboardInterrupt:
-        print("Listener detenido manualmente.")
+        print(f"DEBUG: Preparando para iniciar cliente para @{tiktok_user}...")
+        client = TikTokLiveClient(unique_id=f"@{tiktok_user}")
+
+        client.add_listener(ConnectEvent, on_connect)
+        client.add_listener(CommentEvent, on_comment)
+        client.add_listener(DisconnectEvent, on_disconnect)
+        client.add_listener(LikeEvent, on_like)
+        client.add_listener(GiftEvent, on_gift)
+
+        await client.start()
     except Exception as e:
-        print(f"Ocurrió un error inesperado: {e}")
+        import traceback
+        print(f"ERROR CRÍTICO al iniciar TikTok client para @{tiktok_user}: {e}")
+        traceback.print_exc()
+        send_to_central_brain("status", {"status": "error", "message": str(e)})
+
+# --- Endpoints de Flask ---
+@flask_app.route('/connect', methods=['POST'])
+async def connect_tiktok():
+    data = request.get_json()
+    tiktok_user = data.get('tiktokUser')
+    if not tiktok_user:
+        return jsonify({"error": "tiktokUser es requerido"}), 400
+    
+    print(f"Iniciando conexión con @{tiktok_user} como una tarea de asyncio...")
+    asyncio.create_task(run_tiktok_client(tiktok_user))
+    
+    return jsonify({"status": "ok", "message": f"Intentando conectar a @{tiktok_user}"}), 200
