@@ -751,29 +751,24 @@ body.admin-page-active {
 
 /* ===== ESTILOS DEL NUEVO LAYOUT 9:16 (Restaurado y Corregido) ===== */
 
-.game-viewport {
+.game-page-wrapper .game-viewport {
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0); /* Fondo transparente para OBS */
-  display: flex;
-  flex-direction: column; /* Asegura el flujo vertical */
-  justify-content: flex-start; /* Alinea el contenido arriba */
-  padding-top: 5vh; /* 5% de espacio superior */
-  padding-bottom: 20vh; /* 20% de espacio inferior */
-  box-sizing: border-box; /* Asegura que el padding se incluya en el alto total */
+  background: rgba(0, 0, 0, 0);
+  position: relative;
+  overflow: hidden;
 }
 
-.game-container-vertical {
+.game-page-wrapper .game-container-vertical {
+  position: absolute;
   display: flex;
   flex-direction: column;
-  width: 100%;  /* Llenar el ancho del viewport */
-  height: 75vh; /* Ocupa el 75% de la altura para el juego */
   background: #0a0a1a;
   border-radius: 30px;
   box-shadow: 0 0 40px rgba(0, 212, 255, 0.4);
   border: 2px solid rgba(0, 212, 255, 0.5);
+  overflow: hidden;
   padding: 15px;
-  justify-content: flex-start;
 }
 
 .game-canvas-container {
@@ -901,9 +896,7 @@ body.admin-page-active {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0); /* Fondo transparente para OBS */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: relative;
   overflow: hidden;
 }
 

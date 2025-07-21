@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { TIKTOK_GIFTS, ALLOWED_TEAMS } from '../../utils/constants';
-import GameCanvas from '../Game/GameCanvas';
 import AdminPanel from './AdminPanel';
 
 const AdminPage = () => {
@@ -371,11 +370,6 @@ const AdminPage = () => {
         </div>
 
         <div className="admin-grid-col-2">
-          {/* Canvas del Juego */}
-          <div className="admin-section-v2">
-            <GameCanvas gameState={gameState} />
-          </div>
-
           {/* Columna de Estado y Spawns */}
           <div className="admin-section-v2">
             <h3 className="section-title">👥 Estado de Jugadores</h3>

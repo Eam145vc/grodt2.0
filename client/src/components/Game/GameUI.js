@@ -1,58 +1,324 @@
 import React from 'react';
 
-// --- PARA EL DISEÑADOR DE IA ---
-// Este componente, GameUI, es responsable de renderizar toda la interfaz de usuario (UI)
-// que se superpone al canvas del juego. Recibe el `gameState` completo como una propiedad.
-// El objetivo es mejorar visualmente la barra de energía vertical.
-
 const GameUI = ({ gameState }) => {
   if (!gameState || !gameState.lanes) {
     return null;
   }
 
-  // Esta función determina qué clase de CSS se aplica a la barra de energía
-  // basándose en el nivel de energía actual.
-  // El LLM de diseño puede añadir nuevas clases aquí para diferentes efectos.
-  const getEnergyColor = (energy) => {
-    if (energy === 1000) return 'rainbow-energy'; // Nivel máximo
-    if (energy > 600) return 'bg-yellow-500'; // Nivel 3
-    if (energy > 300) return 'bg-blue-500'; // Nivel 2
-    return 'bg-gray-500'; // Nivel 1 (base)
+  const getEnergyGlow = (energy) => {
+    if (energy === 1000) return '#ff00ff'; // Máximo - Magenta
+    if (energy > 600) return '#ffaa00'; // Alto - Naranja
+    if (energy > 300) return '#00ffff'; // Medio - Cyan
+    return '#666666'; // Bajo - Gris
+  };
+
+  const getHealthGlow = (health) => {
+    if (health > 70) return '#00ff88';
+    if (health > 40) return '#ffaa00';
+    return '#ff4444';
   };
 
   return (
-    // Contenedor principal que abarca toda el área del juego.
-    <div className="game-ui-container">
-      {gameState.lanes.map((lane, index) => (
-        // Contenedor para cada carril individual.
-        <div key={lane.id} className="lane-ui-lane">
-          
-          {/* --- BARRA DE ENERGÍA VERTICAL (OBJETIVO DE MEJORA) --- */}
-          {/* Este es el elemento principal a mejorar. Es un contenedor que ocupa todo el carril
-               y contiene la barra de energía que crece verticalmente. */}
-          <div className="vertical-energy-bar-container">
-            <div
-              className={`vertical-energy-bar-fill ${getEnergyColor(lane.energy)}`}
-              // La altura se calcula dinámicamente basada en la energía del carril (0 a 1000).
-              style={{ height: `${(lane.energy / 1000) * 100}%` }}
-            ></div>
+    <div style={{ 
+      position: 'absolute', 
+      top: 0, 
+      left: 0, 
+      right: 0, 
+      bottom: 0, 
+      pointerEvents: 'none',
+      fontFamily: 'Arial, monospace'
+    }}>
+      
+      {/* Panel de información superior mejorado */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '95%',
+        maxWidth: '400px',
+        background: 'rgba(0, 0, 0, 0.8)',
+        border: '1px solid rgba(0, 255, 255, 0.5)',
+        borderRadius: '15px',
+        padding: '15px',
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            {/* Oleada */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                color: '#00ffff', 
+                fontSize: '12px', 
+                marginBottom: '5px',
+                textShadow: '0 0 10px #00ffff'
+              }}>
+                WAVE
+              </div>
+              <div style={{ 
+                color: '#ffffff', 
+                fontSize: '24px', 
+                fontWeight: 'bold',
+                textShadow: '0 0 15px #00ffff'
+              }}>
+                {gameState.waveSystem.currentWave}
+              </div>
+            </div>
+
+            {/* Tiempo */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                color: '#ffaa00', 
+                fontSize: '12px', 
+                marginBottom: '5px',
+                textShadow: '0 0 10px #ffaa00'
+              }}>
+                TIME
+              </div>
+              <div style={{ 
+                color: '#ffffff', 
+                fontSize: '20px', 
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                textShadow: '0 0 15px #ffaa00'
+              }}>
+                {Math.floor(gameState.waveSystem.timeRemaining / 60)
+                  .toString()
+                  .padStart(2, '0')}
+                :{(gameState.waveSystem.timeRemaining % 60).toString().padStart(2, '0')}
+              </div>
+            </div>
           </div>
 
-          {/* --- BLOQUE DE INFORMACIÓN INFERIOR --- */}
-          {/* Este bloque contiene la barra de vida y la información de la oleada.
-               Actualmente es funcional, pero el LLM de diseño puede proponer mejoras. */}
-          <div className="info-block">
-            <div className="health-bar-container">
-              <div className="health-bar-fill" style={{ width: `${lane.baseHealth}%` }}></div>
-              <span className="health-text">{lane.baseHealth}/100</span>
-            </div>
-            <div className="wave-info-text">
-              <span>Oleada: {gameState.waveSystem.currentWave}</span>
-              <span>Tiempo: {gameState.waveSystem.timeRemaining}s</span>
-            </div>
+          {/* Estado del juego */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {gameState.waveSystem.isActive && !gameState.waveSystem.isPaused && (
+              <div style={{
+                width: '8px',
+                height: '8px',
+                backgroundColor: '#00ff88',
+                borderRadius: '50%',
+                boxShadow: '0 0 10px #00ff88',
+                animation: 'pulse 1s infinite'
+              }} />
+            )}
+            {gameState.waveSystem.isPaused && (
+              <div style={{
+                width: '8px',
+                height: '8px',
+                backgroundColor: '#ffaa00',
+                borderRadius: '50%',
+                boxShadow: '0 0 10px #ffaa00',
+                animation: 'pulse 1s infinite'
+              }} />
+            )}
+            <span style={{ 
+              color: '#cccccc', 
+              fontSize: '12px',
+              fontFamily: 'monospace'
+            }}>
+              {gameState.waveSystem.isActive 
+                ? (gameState.waveSystem.isPaused ? 'PAUSED' : 'ACTIVE') 
+                : 'WAITING'}
+            </span>
           </div>
         </div>
-      ))}
+      </div>
+
+      {/* Contenedor principal para carriles y bases */}
+      <div style={{
+        position: 'absolute',
+        top: '130px', // Espacio para el panel superior
+        left: '10px',
+        right: '10px',
+        bottom: '10px',
+        display: 'flex',
+        justifyContent: 'space-around',
+        gap: '5px'
+      }}>
+        {gameState.lanes.map((lane, index) => (
+          <div key={lane.id} style={{
+            flex: 1,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            {/* Contenedor para la barra de energía y su valor */}
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              flexGrow: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: '90px' // Espacio para la base en la parte inferior
+            }}>
+              {/* Barra de energía */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: '8px',
+                background: 'rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(0, 255, 255, 0.3)',
+                borderRadius: '10px',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  width: '100%',
+                  height: `${((lane.energy || 0) / 1000) * 100}%`,
+                  background: `linear-gradient(to top, ${getEnergyGlow(lane.energy || 0)}, rgba(255,255,255,0.8))`,
+                  borderRadius: '10px',
+                  boxShadow: `0 0 15px ${getEnergyGlow(lane.energy || 0)}`,
+                  transition: 'height 0.3s ease'
+                }} />
+              </div>
+
+              {/* Indicador numérico de energía */}
+              <div style={{
+                position: 'absolute',
+                left: 'calc(50% + 10px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'rgba(0, 0, 0, 0.8)',
+                border: '1px solid rgba(0, 255, 255, 0.3)',
+                borderRadius: '5px',
+                padding: '2px 4px',
+                fontSize: '10px',
+                color: '#00ffff',
+                fontFamily: 'monospace'
+              }}>
+                {lane.energy || 0}
+              </div>
+            </div>
+
+            {/* Contenedor para la información de la base */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              width: '90%',
+              background: 'rgba(0, 0, 0, 0.8)',
+              borderRadius: '15px',
+              border: '1px solid rgba(0, 255, 255, 0.3)',
+              padding: '5px',
+            }}>
+              {/* Barra de vida */}
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '3px'
+                }}>
+                  <span style={{ fontSize: '10px', color: '#00ffff', fontFamily: 'monospace' }}>
+                    BASE
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#ffffff', fontFamily: 'monospace' }}>
+                    {lane.baseHealth}/100
+                  </span>
+                </div>
+                <div style={{
+                  height: '6px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  border: '1px solid rgba(0, 255, 255, 0.3)',
+                  borderRadius: '10px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${lane.baseHealth}%`,
+                    background: `linear-gradient(to right, ${getHealthGlow(lane.baseHealth)}, rgba(255,255,255,0.8))`,
+                    borderRadius: '10px',
+                    boxShadow: `0 0 8px ${getHealthGlow(lane.baseHealth)}`,
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+              </div>
+
+              {/* Nombre del equipo */}
+              {lane.team && (
+                <div style={{
+                  fontSize: '10px',
+                  color: '#00ffff',
+                  textAlign: 'center',
+                  fontFamily: 'monospace',
+                  textShadow: '0 0 5px #00ffff'
+                }}>
+                  {lane.team.toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Indicador de Power Mode */}
+            {lane.doubleBulletsActive && (
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 1,
+                background: 'rgba(138, 43, 226, 0.8)',
+                border: '1px solid rgba(255, 0, 255, 0.5)',
+                borderRadius: '15px',
+                padding: '4px 8px',
+                fontSize: '10px',
+                color: '#ff00ff',
+                fontWeight: 'bold',
+                textShadow: '0 0 10px #ff00ff',
+                animation: 'pulse 1s infinite'
+              }}>
+                ⚡ POWER MODE
+              </div>
+            )}
+
+            {/* Overlay de eliminado */}
+            {lane.isGameOver && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 2,
+                background: 'rgba(255, 0, 50, 0.2)',
+                border: '2px solid rgba(255, 0, 50, 0.5)',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  color: '#ff0032',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  transform: 'rotate(45deg)',
+                  textShadow: '0 0 10px #ff0032',
+                  opacity: 0.7
+                }}>
+                  ELIMINATED
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* CSS para animaciones */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 };
