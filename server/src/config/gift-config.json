@@ -1,0 +1,45 @@
+{
+  "lanes": [
+    {
+      "laneId": 1,
+      "gifts": [
+        { "name": "GG", "action": "Básico", "image": "gg.webp" },
+        { "name": "GG x5", "action": "Especial", "image": "gg.webp" },
+        { "name": "Banana", "action": "Tanque", "image": "banana.webp" },
+        { "name": "Banana x5", "action": "JEFE", "image": "banana.webp" }
+      ]
+    },
+    {
+      "laneId": 2,
+      "gifts": [
+        { "name": "Love you so much", "action": "Básico", "image": "Love_you_so_much.webp" },
+        { "name": "Love you so much x5", "action": "Especial", "image": "Love_you_so_much.webp" },
+        { "name": "Friendship Necklace", "action": "Tanque", "image": "Friendship_Necklace.webp" },
+        { "name": "Friendship Necklace x5", "action": "JEFE", "image": "Friendship_Necklace.webp" }
+      ]
+    },
+    {
+      "laneId": 3,
+      "gifts": [
+        { "name": "TikTok", "action": "Básico", "image": "TikTok.webp" },
+        { "name": "TikTok x5", "action": "Especial", "image": "TikTok.webp" },
+        { "name": "Dolphin", "action": "Tanque", "image": "Dolphin.webp" },
+        { "name": "Dolphin x5", "action": "JEFE", "image": "Dolphin.webp" }
+      ]
+    },
+    {
+      "laneId": 4,
+      "gifts": [
+        { "name": "It's corn", "action": "Básico", "image": "Its_corn.webp" },
+        { "name": "It's corn x5", "action": "Especial", "image": "Its_corn.webp" },
+        { "name": "Hi Bear", "action": "Tanque", "image": "Hi_Bear.webp" },
+        { "name": "Hi Bear x5", "action": "JEFE", "image": "Hi_Bear.webp" }
+      ]
+    }
+  ],
+  "powerups": [
+    { "name": "Doughnut", "action": "Super Cañón", "image": "Doughnut.webp" },
+    { "name": "Perfume", "action": "Bola de Hielo", "image": "Perfume.webp" },
+    { "name": "Summer Sun", "action": "Cañón Inteligente", "image": "Summer_Sun.webp" }
+  ]
+}

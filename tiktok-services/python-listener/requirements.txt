@@ -2,3 +2,7 @@ TikTokLive
 requests
 Flask
 waitress
+asgiref
+curl_cffi
+redis
+uvicorn

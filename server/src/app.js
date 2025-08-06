@@ -3,6 +3,9 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const SocketHandler = require('./socket/SocketHandler');
+const logger = require('./utils/logger');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +26,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Servir himnos estáticos
+app.use(
+  '/himnos_latam',
+  express.static(path.join(__dirname, '../../himnos_latam'))
+);
+
 // Rutas básicas
 app.get('/', (req, res) => {
   res.json({ 
@@ -41,6 +50,18 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Endpoint para obtener la configuración de los regalos
+app.get('/api/gift-config', (req, res) => {
+  try {
+    const configPath = path.join(__dirname, 'config', 'gift-config.json');
+    const configData = fs.readFileSync(configPath, 'utf8');
+    res.json(JSON.parse(configData));
+  } catch (error) {
+    logger.error('Error al leer gift-config.json:', error);
+    res.status(500).json({ error: 'No se pudo cargar la configuración de regalos.' });
+  }
+});
+
 // Inicializar el handler de sockets
 const socketHandler = new SocketHandler(io);
 
@@ -52,37 +73,37 @@ app.get('/stats', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor Tower Defense corriendo en puerto ${PORT}`);
-  console.log(`📊 Panel Admin: http://localhost:5004/admin`);
-  console.log(`🎮 Juego: http://localhost:5004/game`);
-  console.log(`📈 Stats: http://localhost:${PORT}/stats`);
+  logger.info(`🚀 Servidor Tower Defense corriendo en puerto ${PORT}`);
+  logger.info(`📊 Panel Admin: http://localhost:5004/admin`);
+  logger.info(`🎮 Juego: http://localhost:5004/game`);
+  logger.info(`📈 Stats: http://localhost:${PORT}/stats`);
 });
 
 // Manejo de errores
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Promise Rejection:', err);
+  logger.error({ err }, '❌ Unhandled Promise Rejection:');
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
+  logger.fatal({ err }, '❌ Uncaught Exception:');
   process.exit(1);
 });
 
 // Cleanup al cerrar el servidor
 process.on('SIGTERM', () => {
-  console.log('🛑 Cerrando servidor...');
+  logger.info('🛑 Cerrando servidor...');
   socketHandler.destroy();
   server.close(() => {
-    console.log('✅ Servidor cerrado correctamente');
+    logger.info('✅ Servidor cerrado correctamente');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 Cerrando servidor...');
+  logger.info('🛑 Cerrando servidor...');
   socketHandler.destroy();
   server.close(() => {
-    console.log('✅ Servidor cerrado correctamente');
+    logger.info('✅ Servidor cerrado correctamente');
     process.exit(0);
   });
 });

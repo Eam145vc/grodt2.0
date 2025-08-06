@@ -2,19 +2,25 @@ const express = require('express');
 const http = require('http');
 const { io } = require("socket.io-client");
 const fetch = require('node-fetch');
+const Fuse = require('fuse.js');
+const { createClient } = require('redis');
 
 // --- Configuración ---
 const PORT = process.env.PORT || 5001;
-const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:5000"; // Corregido: puerto 5000
+const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:5000";
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const REDIS_CHANNEL = 'tiktok-events';
+const TEAM_COMMAND_COOLDOWN = 10 * 60 * 1000; // 10 minutos en milisegundos
 
-// --- Conexión con el Servidor del Juego ---
+// --- Clientes ---
 const gameSocket = io(GAME_SERVER_URL, {
     reconnectionAttempts: 5,
     reconnectionDelay: 5000,
 });
+const redisClient = createClient({ url: `redis://${REDIS_HOST}:${REDIS_PORT}` });
 
 // --- Configuración de Eventos de Socket ---
-// Se configura UNA SOLA VEZ para evitar duplicados en reconexiones.
 gameSocket.on('connect', () => {
     console.log(`Conectado al servidor del juego en ${GAME_SERVER_URL}`);
 });
@@ -40,40 +46,37 @@ const VALID_TEAMS = [
     'uruguay', 'venezuela', 'brasil'
 ];
 
-// --- Lógica para Evitar Duplicados ---
-const recentEvents = new Map();
-const EVENT_TIMEOUT = 5000; // 5 segundos
+// --- Configuración de Búsqueda Difusa ---
+const fuse = new Fuse(VALID_TEAMS, {
+  includeScore: true,
+  threshold: 0.4,
+});
+
+// --- Lógica de Cooldown para Comandos de Equipo ---
+const processedEvents = new Set();
+const EVENT_TIMEOUT = 2000; // 2 segundos para considerar un evento como duplicado
 
 /**
- * Verifica si un evento es un duplicado.
- * @param {string} eventType - El tipo de evento.
- * @param {object} data - Los datos del evento.
- * @returns {boolean} - True si el evento es un duplicado, false en caso contrario.
+ * Verifica si un evento ya ha sido procesado recientemente.
+ * @param {string} eventId - El ID único del evento.
+ * @returns {boolean} - True si el evento es un duplicado.
  */
-function isDuplicate(eventType, data) {
-    // Crear un identificador único para el evento
-    const eventId = `${eventType}-${data.user}-${data.gift_name || data.comment || ''}-${data.count || ''}`;
-    const now = Date.now();
-
-    if (recentEvents.has(eventId)) {
-        // Si el evento ya existe y no ha expirado, es un duplicado.
-        if (now - recentEvents.get(eventId) < EVENT_TIMEOUT) {
-            console.log(`Evento duplicado detectado y descartado: ${eventId}`);
-            return true;
-        }
+function isDuplicate(eventId) {
+    if (processedEvents.has(eventId)) {
+        return true;
     }
-
-    // Almacenar el evento con la marca de tiempo actual.
-    recentEvents.set(eventId, now);
-
-    // Limpiar eventos antiguos para no consumir memoria indefinidamente.
-    for (const [key, timestamp] of recentEvents.entries()) {
-        if (now - timestamp > EVENT_TIMEOUT) {
-            recentEvents.delete(key);
-        }
-    }
-
     return false;
+}
+
+/**
+ * Marca un evento como procesado y lo elimina después de un tiempo.
+ * @param {string} eventId - El ID único del evento.
+ */
+function markAsProcessed(eventId) {
+    processedEvents.add(eventId);
+    setTimeout(() => {
+        processedEvents.delete(eventId);
+    }, EVENT_TIMEOUT);
 }
 
 /**
@@ -83,174 +86,119 @@ function isDuplicate(eventType, data) {
  */
 function detectTeamCommand(comment) {
     if (!comment || typeof comment !== 'string') return null;
-    
+
     const normalizedComment = comment.toLowerCase().trim();
-    
-    // Opción 1: El comentario empieza con un prefijo (ej: "/colombia", "#mexico")
+    let potentialTeamName = '';
+
+    // Extraer el nombre del equipo del comando
     const prefixes = ['/', '#', '@'];
     if (prefixes.some(p => normalizedComment.startsWith(p))) {
-        const teamName = normalizedComment.substring(1).trim();
-        if (VALID_TEAMS.includes(teamName)) {
-            return teamName;
+        potentialTeamName = normalizedComment.substring(1).trim();
+    } else {
+        const match = normalizedComment.match(/^(?:equipo|team|pais)\s+(.+)$/);
+        if (match) {
+            potentialTeamName = match[1].trim();
         }
     }
 
-    // Opción 2: El comentario usa un comando explícito (ej: "equipo colombia")
-    const commandPatterns = [
-        /^(?:equipo|team|pais)\s+(.+)$/
-    ];
-    
-    for (const pattern of commandPatterns) {
-        const match = normalizedComment.match(pattern);
-        if (match) {
-            const teamName = match[1].toLowerCase().trim();
-            if (VALID_TEAMS.includes(teamName)) {
-                return teamName;
-            }
-            // Opcional: buscar coincidencias parciales si se desea
-            const partialMatch = VALID_TEAMS.find(team => team.startsWith(teamName));
-            if (partialMatch) {
-                return partialMatch;
-            }
-        }
+    if (!potentialTeamName) {
+        return null;
     }
-    
+
+    // Usar Fuse.js para encontrar la mejor coincidencia
+    const results = fuse.search(potentialTeamName);
+
+    if (results.length > 0) {
+        // Devolver el nombre del equipo más probable
+        return results[0].item;
+    }
+
     return null;
 }
 
-// --- Servidor Express ---
-const app = express();
-app.use(express.json());
+// --- Lógica Principal de Manejo de Eventos ---
+function handleTikTokEvent(rawMessage) {
+    try {
+        const { source, event_type, data } = JSON.parse(rawMessage);
 
-app.get('/', (req, res) => {
-    res.json({
-        message: 'TikTok Central Brain funcionando',
-        connectedToGame: gameSocket.connected,
-        validTeams: VALID_TEAMS,
-        timestamp: new Date().toISOString()
-    });
-});
-
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-});
-
-app.post('/event', (req, res) => {
-    const { source, event_type, data } = req.body;
-    console.log(`Evento recibido de ${source}: ${event_type}`, data);
-
-    // Manejar eventos de estado de conexión de los listeners
-    if (event_type === 'status') {
-        console.log(`Estado del listener ${source}: ${data.status}`);
-        if (gameSocket.connected) {
-            gameSocket.emit('tiktok-connection-status', data);
+        // Crear un ID único para de-duplicación
+        const eventId = `${event_type}-${data.user}-${data.gift_id || data.comment || ''}-${data.count || ''}`;
+        if (isDuplicate(eventId)) {
+            console.log(`[${source}] Evento duplicado ignorado: ${event_type} de ${data.user}`);
+            return;
         }
-        return res.status(200).send({ status: 'ok', message: 'Estado procesado.' });
-    }
-
-    // Detectar comando de equipo en los comentarios
-    if (event_type === 'comment' && data.comment) {
-        const teamName = detectTeamCommand(data.comment);
-        if (teamName) {
-            if (gameSocket.connected) {
-                gameSocket.emit('join-team', { userId: data.user, teamName });
-                console.log(`👥 Usuario ${data.user} intentando unirse al equipo ${teamName}`);
-            }
-            return res.status(200).send({
-                status: 'ok',
-                message: `Comando de equipo procesado: ${teamName}`,
-                team: teamName
-            });
-        }
-    }
-
-    if (isDuplicate(event_type, data)) {
-        return res.status(200).send({ status: 'ok', message: 'Evento duplicado ignorado.' });
-    }
-
-    // Procesar eventos de likes y gifts
-    if (gameSocket.connected) {
-        gameSocket.emit('tiktok-event', { event_type, data });
-        console.log(`📡 Evento '${event_type}' enviado al servidor del juego.`);
+        markAsProcessed(eventId);
         
-        // Log especial para eventos de presala
-        if (event_type === 'like') {
-            console.log(`👍 ${data.user} envió ${data.count || 1} likes`);
-        } else if (event_type === 'gift') {
-            console.log(`🎁 ${data.user} envió ${data.count || 1}x "${data.gift_name}"`);
+        console.log(`[${source}] Evento procesado: ${event_type}`);
+
+        // --- Manejo de Comandos de Equipo (sin Cooldown) ---
+        if (event_type === 'comment' && data.comment) {
+            const teamName = detectTeamCommand(data.comment);
+            if (teamName) {
+                if (gameSocket.connected) {
+                    // Simplemente reenviamos el evento al servidor del juego
+                    gameSocket.emit('join-team', { userId: data.user, teamName });
+                }
+                return; // Terminar el procesamiento para este comentario
+            }
         }
-    } else {
-        console.error('❌ No se pudo enviar el evento: no hay conexión con el servidor del juego.');
+
+        // --- Manejo de Otros Eventos (likes, gifts, etc.) ---
+        if (gameSocket.connected) {
+            // No es necesario filtrar duplicados aquí, Redis ya garantiza la entrega
+            gameSocket.emit('tiktok-event', { event_type, data });
+            
+            // Logueo específico para visualización
+            if (event_type === 'like') {
+                console.log(`👍 ${data.user} envió ${data.count || 1} likes`);
+            } else if (event_type === 'gift') {
+                console.log(`🎁 ${data.user} envió ${data.count || 1}x "${data.gift_name}"`);
+            }
+        } else {
+            console.error('❌ No se pudo enviar el evento: no hay conexión con el servidor del juego.');
+        }
+
+    } catch (error) {
+        console.error('Error al procesar el mensaje de Redis:', error);
     }
+}
 
-    res.status(200).send({ status: 'ok', message: 'Evento procesado.' });
-});
+// --- Inicialización del Servidor y Conexiones ---
+async function main() {
+    const app = express();
+    const server = http.createServer(app);
 
-// Endpoint para obtener equipos válidos
-app.get('/teams', (req, res) => {
-    res.json({ 
-        validTeams: VALID_TEAMS,
-        count: VALID_TEAMS.length
+    // Endpoint de salud para monitoreo
+    app.get('/health', (req, res) => {
+        res.json({
+            status: 'ok',
+            gameSocketConnected: gameSocket.connected,
+            redisConnected: redisClient.isOpen,
+        });
     });
-});
+    
+    server.listen(PORT, () => {
+        console.log(`🧠 El Cerebro Central está escuchando en el puerto ${PORT}`);
+    });
 
-// Endpoint para simular eventos (para testing)
-app.post('/simulate', (req, res) => {
-    const { user, type, team, gift, count } = req.body;
-    
-    if (!user || !type) {
-        return res.status(400).json({ error: 'user y type son requeridos' });
-    }
-    
-    let eventData = { user };
-    
-    switch (type) {
-        case 'join-team':
-            if (!team || !VALID_TEAMS.includes(team.toLowerCase())) {
-                return res.status(400).json({ error: 'team inválido' });
-            }
-            if (gameSocket.connected) {
-                gameSocket.emit('join-team', { userId: user, teamName: team.toLowerCase() });
-            }
-            return res.json({ status: 'ok', message: `Usuario ${user} unido al equipo ${team}` });
-            
-        case 'like':
-            eventData.count = count || 1;
-            break;
-            
-        case 'gift':
-            eventData.gift_name = gift || 'heart';
-            eventData.count = count || 1;
-            break;
-            
-        default:
-            return res.status(400).json({ error: 'Tipo de evento no válido' });
-    }
-    
-    if (gameSocket.connected) {
-        gameSocket.emit('tiktok-event', { event_type: type, data: eventData });
-        res.json({ status: 'ok', message: `Evento ${type} simulado para ${user}` });
-    } else {
-        res.status(500).json({ error: 'No conectado al servidor del juego' });
-    }
-});
-const server = http.createServer(app);
-
-
-server.listen(PORT, () => {
-    console.log(`🧠 El Cerebro Central está escuchando en el puerto ${PORT}`);
-    console.log(`🎯 Endpoints disponibles:`);
-    console.log(`   GET  /         - Estado del sistema`);
-    console.log(`   POST /event    - Recibir eventos de TikTok`);
-    console.log(`   GET  /teams    - Equipos válidos`);
-    console.log(`   POST /simulate - Simular eventos`);
-    console.log(`   POST /listener-status - Recibir estado de listeners`);
-    console.log(`   POST /connect-tiktok - Iniciar conexión con TikTok`);
-    console.log(`🎮 Conectando al servidor del juego en ${GAME_SERVER_URL}`);
-    
-    // Conectar al servidor del juego DESPUÉS de que el servidor Express esté listo
+    // Conectar al servidor del juego
     gameSocket.connect();
-});
+
+    // Conectar a Redis y suscribirse al canal
+    try {
+        await redisClient.connect();
+        console.log('🔌 Conectado a Redis.');
+        
+        await redisClient.subscribe(REDIS_CHANNEL, (message) => {
+            handleTikTokEvent(message);
+        });
+        console.log(`📡 Suscrito al canal de Redis: ${REDIS_CHANNEL}`);
+
+    } catch (err) {
+        console.error('❌ Error fatal al conectar con Redis:', err);
+        process.exit(1); // Salir si no se puede conectar a Redis
+    }
+}
 
 // --- Lógica de Conexión con TikTok ---
 const listenerConnections = {
@@ -258,16 +206,6 @@ const listenerConnections = {
     nodejs: { connected: false, host: 'http://localhost:5002' }
 };
 let currentTiktokUser = null;
-
-app.post('/listener-status', (req, res) => {
-    const { source, status } = req.body;
-    if (listenerConnections[source]) {
-        listenerConnections[source].connected = (status === 'connected');
-        console.log(`Estado del listener ${source} actualizado a: ${status}`);
-        checkAllListenersConnected();
-    }
-    res.sendStatus(200);
-});
 
 async function connectToTikTok(tiktokUser) {
     console.log(`Iniciando conexión con TikTok Live para @${tiktokUser}...`);
@@ -285,15 +223,6 @@ async function connectToTikTok(tiktokUser) {
     await Promise.all(connectionPromises);
 }
 
-app.post('/connect-tiktok', (req, res) => {
-    const { tiktokUser } = req.body;
-    if (!tiktokUser) {
-        return res.status(400).json({ error: 'tiktokUser es requerido' });
-    }
-    connectToTikTok(tiktokUser);
-    res.status(200).json({ message: `Iniciando conexión con @${tiktokUser} en todos los listeners.` });
-});
-
 function checkAllListenersConnected() {
     const allConnected = Object.values(listenerConnections).every(l => l.connected);
     if (allConnected) {
@@ -301,3 +230,5 @@ function checkAllListenersConnected() {
         gameSocket.emit('tiktok-connected', { user: currentTiktokUser });
     }
 }
+
+main();

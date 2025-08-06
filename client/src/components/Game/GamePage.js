@@ -2,10 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import GameUI from './GameUI';
 import GameCanvas from './GameCanvas'; // Importar el GameCanvas moderno
+import GameBars from './GameBars';
+import WinnerAnimation from './WinnerAnimation';
+
+const teamToCountryCode = {
+  'argentina': 'ar',
+  'bolivia': 'bo',
+  'chile': 'cl',
+  'colombia': 'co',
+  'costa rica': 'cr',
+  'cuba': 'cu',
+  'ecuador': 'ec',
+  'el salvador': 'sv',
+  'guatemala': 'gt',
+  'honduras': 'hn',
+  'mexico': 'mx',
+  'nicaragua': 'ni',
+  'panama': 'pa',
+  'paraguay': 'py',
+  'peru': 'pe',
+  'puerto rico': 'pr',
+  'republica dominicana': 'do',
+  'uruguay': 'uy',
+  'venezuela': 've',
+  'brasil': 'br'
+};
 
 const GamePage = () => {
   const socketRef = useRef(null);
   const gameContainerRef = useRef(null);
+  const [flagUrl, setFlagUrl] = useState('');
   const [gameState, setGameState] = useState({
     lanes: [
       { id: 1, baseHealth: 100, enemies: [], bullets: [], enemyProjectiles: [], turrets: [], freezeBalls: [], doubleBulletsActive: false, isGameOver: false, team: null, energy: 0 },
@@ -83,6 +109,20 @@ const GamePage = () => {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
+  const winnerLane = gameState.winner ? gameState.lanes.find(lane => lane.id === gameState.winner) : null;
+  const winnerTeamName = winnerLane ? winnerLane.team : null;
+
+  useEffect(() => {
+    if (winnerTeamName) {
+      const countryCode = teamToCountryCode[winnerTeamName.toLowerCase()];
+      if (countryCode) {
+        setFlagUrl(`https://flagpedia.net/data/flags/w160/${countryCode}.png`);
+      }
+    } else {
+      setFlagUrl('');
+    }
+  }, [winnerTeamName]);
+
   return (
     <div className="game-page-wrapper">
       <div className="game-viewport">
@@ -100,24 +140,33 @@ const GamePage = () => {
           <div className="game-canvas-container">
             <GameCanvas gameState={gameState} />
             <GameUI gameState={gameState} />
+            <GameBars gameState={gameState} />
             
-            {/* Overlay de ganador */}
+            {/* Lógica de fin de juego */}
             {gameState.globalGameOver && (
-              <div className="winner-overlay">
-                {gameState.winner ? (
+              <>
+                {winnerTeamName ? (
+                  // Caso de Victoria
                   <>
-                    <h1 className="winner-title">🏆 ¡VICTORIA!</h1>
-                    <h2 className="winner-subtitle">Jugador {gameState.winner} Sobrevive</h2>
-                    <p className="winner-score">Oleadas Completadas: {gameState.waveSystem.currentWave}</p>
+                    <WinnerAnimation />
+                    <div className="winner-overlay transparent-bg"> {/* Overlay sin fondo */}
+                      {flagUrl && <img src={flagUrl} alt={`Bandera de ${winnerTeamName}`} className="winner-flag" />}
+                      <h1 className="winner-title">🏆 ¡VICTORIA!</h1>
+                      <h2 className="winner-subtitle">
+                        Equipo <span className="winner-team-name">{winnerTeamName}</span> Sobrevive
+                      </h2>
+                      <p className="winner-score">Oleadas Completadas: {gameState.waveSystem.currentWave}</p>
+                    </div>
                   </>
                 ) : (
-                  <>
+                  // Caso de Aniquilación Total
+                  <div className="winner-overlay">
                     <h1 className="winner-title">💀 ANIQUILACIÓN TOTAL</h1>
                     <h2 className="winner-subtitle">Todos los defensores han caído</h2>
                     <p className="winner-score">Oleadas Resistidas: {gameState.waveSystem.currentWave}</p>
-                  </>
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>

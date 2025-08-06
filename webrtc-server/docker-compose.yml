@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  ome:
+    image: airensoft/ovenmediaengine:latest
+    container_name: webrtc-server
+    ports:
+      - "1935:1935" # RTMP (for fallback/testing)
+      - "3333:3333" # WHIP (for OBS)
+      - "3478:3478" # STUN
+      - "9000:9000" # WebRTC Signaling
+      - "8081:8081" # Web Admin/Dashboard
+      - "10000-10100:10000-10100/udp" # WebRTC Media
+    volumes:
+      - ./conf:/opt/ovenmediaengine/bin/conf
+      - ./www:/opt/ovenmediaengine/bin/www
+    restart: always

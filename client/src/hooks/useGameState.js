@@ -47,7 +47,7 @@ const ENEMY_TYPES = {
     damage: 8,
     canShoot: true,
     shootInterval: 3000,
-    shootDamage: 15
+    shootDamage: 1
   },
   BOSS: {
     health: 30,
@@ -129,6 +129,7 @@ class GameState {
     this.enemyTypes = ENEMY_TYPES;
     this.gameLoop = null;
     this.lastTime = Date.now();
+    this.resetTimer = null; // Para el reinicio retardado
     
     // Power-ups activos (para mostrar en el admin)
     this.activePowerUps = {
@@ -374,7 +375,6 @@ class GameState {
 
   updateGame() {
     const currentTime = Date.now();
-    const deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
     // Actualizar power-ups primero
@@ -469,6 +469,8 @@ class GameState {
   }
 
   checkGameOver() {
+    if (this.globalGameOver) return; // Evita que se ejecute multiples veces
+
     const aliveLanes = this.lanes.filter(lane => !lane.isGameOver);
     
     if (aliveLanes.length <= 1) {
@@ -480,7 +482,11 @@ class GameState {
         this.winner = null;
       }
       
-      this.stopWaves();
+      this._stopGameMechanics();
+      
+      this.resetTimer = setTimeout(() => {
+        this.resetGame();
+      }, 60000); // 1 minuto
     }
   }
 
@@ -513,26 +519,26 @@ class GameState {
     this.waveSystem.isPaused = true;
   }
 
-  stopWaves() {
+  _stopGameMechanics() {
     this.waveSystem.isActive = false;
+    if (this.waveSystem.waveInterval) {
+        clearInterval(this.waveSystem.waveInterval);
+        this.waveSystem.waveInterval = null;
+    }
+    if (this.waveSystem.spawnInterval) {
+        clearInterval(this.waveSystem.spawnInterval);
+        this.waveSystem.spawnInterval = null;
+    }
+    if (this.gameLoop) {
+        clearInterval(this.gameLoop);
+        this.gameLoop = null;
+    }
+  }
+
+  resetGame() {
     this.waveSystem.isPaused = false;
     this.waveSystem.currentWave = 0;
     this.waveSystem.timeRemaining = 15;
-    
-    if (this.waveSystem.waveInterval) {
-      clearInterval(this.waveSystem.waveInterval);
-      this.waveSystem.waveInterval = null;
-    }
-    
-    if (this.waveSystem.spawnInterval) {
-      clearInterval(this.waveSystem.spawnInterval);
-      this.waveSystem.spawnInterval = null;
-    }
-    
-    if (this.gameLoop) {
-      clearInterval(this.gameLoop);
-      this.gameLoop = null;
-    }
     
     // Reset del juego
     this.lanes.forEach(lane => {
@@ -540,14 +546,13 @@ class GameState {
       lane.enemies = [];
       lane.bullets = [];
       lane.enemyProjectiles = [];
-      lane.turrets = []; // Limpiar torretas
-      lane.freezeBalls = []; // Limpiar bolas de hielo
-      lane.doubleBulletsActive = false; // Desactivar balas dobles
+      lane.turrets = [];
+      lane.freezeBalls = [];
+      lane.doubleBulletsActive = false;
       lane.doubleBulletsEndTime = 0;
       lane.isGameOver = false;
     });
     
-    // Limpiar power-ups activos
     this.activePowerUps = {
       turrets: [],
       freezeBalls: [],
@@ -556,6 +561,15 @@ class GameState {
     
     this.globalGameOver = false;
     this.winner = null;
+    this.resetTimer = null;
+  }
+
+  stopWaves() {
+    if (this.resetTimer) {
+        clearTimeout(this.resetTimer);
+    }
+    this._stopGameMechanics();
+    this.resetGame();
   }
 
   forceNextWave() {

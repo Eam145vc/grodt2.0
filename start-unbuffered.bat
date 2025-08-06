@@ -2,6 +2,9 @@
 ECHO Activando entorno virtual de Python...
 CALL tiktok-services/python-listener/venv/Scripts/activate.bat
 
+ECHO Instalando/actualizando dependencias de Python...
+pip install -r tiktok-services/python-listener/requirements.txt
+
 ECHO Iniciando Listener de Python con Uvicorn (Sin Búfer)...
 cd tiktok-services/python-listener
 set PYTHONIOENCODING=utf-8

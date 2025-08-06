@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { TIKTOK_GIFTS, ALLOWED_TEAMS } from '../../utils/constants';
 import AdminPanel from './AdminPanel';
+import EventFeed from './EventFeed';
+import StatsPanel from './StatsPanel';
 
 const AdminPage = () => {
   const socketRef = useRef(null);
@@ -11,7 +13,7 @@ const AdminPage = () => {
   const [selectedGifts, setSelectedGifts] = useState({ 1: '', 2: '', 3: '', 4: '' });
   const [coinAmounts, setCoinAmounts] = useState({ 1: 10, 2: 10, 3: 10, 4: 10 });
   const [powerUpLane, setPowerUpLane] = useState(1);
-  const [teamCommand, setTeamCommand] = useState('/equipo colombia');
+  const [teamCommand, setTeamCommand] = useState('equipo colombia');
   const [presalaUserId, setPresalaUserId] = useState('user123');
   const [presalaTeam, setPresalaTeam] = useState(ALLOWED_TEAMS[0]);
   const [presalaGiftAmount, setPresalaGiftAmount] = useState(10);
@@ -155,7 +157,7 @@ const AdminPage = () => {
   };
 
   const handleTeamCommand = () => {
-    if (socketRef.current && isConnected && teamCommand.startsWith('/equipo ')) {
+    if (socketRef.current && isConnected && teamCommand.startsWith('equipo ')) {
       const teamName = teamCommand.split(' ')[1];
       if (teamName) {
         socketRef.current.emit('join-team', { userId: 'admin_user', teamName });
@@ -196,6 +198,14 @@ const AdminPage = () => {
         message: `Enviando orden para conectar con @${tiktokUser}...`
       });
       socketRef.current.emit('connect-tiktok', { tiktokUser });
+    }
+  };
+
+  const handleResetAllStats = () => {
+    if (window.confirm('¿ESTÁS SEGURO? Esta acción borrará TODAS las estadísticas de victorias y equipos de forma permanente. Es irreversible.')) {
+      if (socketRef.current && isConnected) {
+        socketRef.current.emit('admin:resetAllStats');
+      }
     }
   };
 
@@ -315,7 +325,7 @@ const AdminPage = () => {
 
           <div className="admin-section-v2">
             <h3 className="section-title">⚡ Power-Ups</h3>
-            {(gameState.activePowerUps.turrets.length > 0 || gameState.activePowerUps.doubleBullets.length > 0) && (
+            {(gameState.activePowerUps.turrets.length > 0 || (gameState.activePowerUps.doubleBullets && gameState.activePowerUps.doubleBullets.length > 0)) && (
               <div className="powerups-status">
                 <h4 style={{ color: '#00ff88', marginBottom: '10px' }}>🔥 Power-Ups Activos:</h4>
                 {gameState.activePowerUps.turrets.length > 0 && (
@@ -323,7 +333,7 @@ const AdminPage = () => {
                     🏗️ Torretas activas: {gameState.activePowerUps.turrets.map(p => `P${p.laneId} (${formatTimeRemaining(p.endTime)})`).join(', ')}
                   </div>
                 )}
-                {gameState.activePowerUps.doubleBullets.length > 0 && (
+                {gameState.activePowerUps.doubleBullets && gameState.activePowerUps.doubleBullets.length > 0 && (
                   <div className="powerup-indicator double-bullets-active">
                     🎯 Balas Dobles activas: {gameState.activePowerUps.doubleBullets.map(p => `P${p.laneId} (${formatTimeRemaining(p.endTime)})`).join(', ')}
                   </div>
@@ -355,11 +365,11 @@ const AdminPage = () => {
               </div>
             </div>
             <div className="powerup-section">
-              <h4 className="powerup-title">🎯 Balas Dobles (20s duración)</h4>
-              <p className="powerup-description">Las balas hacen doble daño y se ven más grandes</p>
+              <h4 className="powerup-title">🎯 Balas Dobles (20s)</h4>
+              <p className="powerup-description">Duplica el daño de las balas de la base principal.</p>
               <div className="powerup-controls">
                 {gameState.lanes.map((lane, index) => (
-                  <button key={`double-${lane.id}`} className={`admin-button-v2 powerup-double ${lane.isGameOver ? 'disabled' : ''} ${lane.doubleBulletsActive ? 'active' : ''}`} onClick={() => activateDoubleBullets(lane.id)} disabled={!isConnected || lane.isGameOver || lane.doubleBulletsActive}>
+                  <button key={`rapid-${lane.id}`} className={`admin-button-v2 powerup-double ${lane.isGameOver ? 'disabled' : ''} ${lane.doubleBulletsActive ? 'active' : ''}`} onClick={() => activateDoubleBullets(lane.id)} disabled={!isConnected || lane.isGameOver}>
                     {lane.isGameOver ? '💀' : lane.doubleBulletsActive ? '🎯✨' : '🎯'} P{index + 1}
                     {lane.doubleBulletsActive && (<span className="double-active"> (ACTIVO)</span>)}
                   </button>
@@ -486,11 +496,11 @@ const AdminPage = () => {
                 <option value={3}>Carril 3</option>
                 <option value={4}>Carril 4</option>
               </select>
-              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Game Controller', count: 1, lane: powerUpLane })} disabled={!isConnected}>
-                🏗️ Game Controller
+              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Hand Hearts', count: 1 })} disabled={!isConnected}>
+                🏗️ Hand Hearts (Torreta)
               </button>
-              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Super GG', count: 1, lane: powerUpLane })} disabled={!isConnected}>
-                🧊 Super GG
+              <button className="admin-button-v2" onClick={() => simulateTikTokEvent('gift', { user: 'test_user', gift_name: 'Confetti', count: 1 })} disabled={!isConnected}>
+                🧊 Confetti (Bola Hielo)
               </button>
             </div>
           </div>
@@ -534,6 +544,8 @@ const AdminPage = () => {
           </div>
         </div>
         
+        <EventFeed events={gameState.eventLog} />
+
         <div className="admin-section-v2">
           <h3 className="section-title">📱 Simulación de TikTok en Presala</h3>
           <div className="powerup-section">
@@ -601,6 +613,18 @@ const AdminPage = () => {
           </div>
         )}
         
+        <StatsPanel socket={socketRef.current} />
+
+        <div className="admin-section-v2" style={{ backgroundColor: '#c0392b' }}>
+          <h3 className="section-title" style={{ color: 'white' }}>Zona de Peligro</h3>
+          <button className="admin-button-v2 wave-stop" onClick={handleResetAllStats} disabled={!isConnected}>
+            🔥 RESETEO TOTAL DEL DÍA 🔥
+          </button>
+          <p style={{ color: '#ecf0f1', fontSize: '0.8rem', marginTop: '10px' }}>
+            Este botón borra todas las estadísticas (victorias, puntos) y la asignación de equipos de los usuarios. Úsalo solo al final del día.
+          </p>
+        </div>
+
         <div className="admin-footer" style={{ gridColumn: 'span 2' }}>
           <p>🔗 <a href="/game" className="game-link" target="_blank" rel="noopener noreferrer">
             Ver Pantalla de Juego

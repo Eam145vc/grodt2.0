@@ -6,7 +6,8 @@ const PRESALA_CONFIG = {
   
   // Configuración de puntos
   POINTS_PER_LIKE: 1,
-  POINTS_PER_GIFT: 2,
+  POINTS_PER_GIFT: 5,
+  POINTS_PER_COMMENT: 1,
   
   // Duración de la presala
   DURATION_SECONDS: 180,
@@ -22,6 +23,7 @@ const PRESALA_CONFIG = {
     'cuba',
     'ecuador',
     'el salvador',
+    'espana',
     'guatemala',
     'honduras',
     'mexico',

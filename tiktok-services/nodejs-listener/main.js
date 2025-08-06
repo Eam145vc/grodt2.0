@@ -1,16 +1,41 @@
 const { TikTokLiveConnection } = require('tiktok-live-connector');
-const axios = require('axios');
 const express = require('express');
+const { createClient } = require('redis');
+const axios = require('axios');
 
 // --- Configuración ---
-const CENTRAL_BRAIN_URL = process.env.CENTRAL_BRAIN_URL || 'http://localhost:5001/event';
 const PORT = process.env.NODEJS_LISTENER_PORT || 5002;
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const REDIS_CHANNEL = 'tiktok-events';
 
-// --- Cliente de TikTok Live (se inicializará bajo demanda) ---
+// --- Clientes ---
+const redisClient = createClient({ url: `redis://${REDIS_HOST}:${REDIS_PORT}` });
+redisClient.on('error', (err) => console.error('Error en el Cliente Redis', err));
+redisClient.connect();
 let connection = null;
 let availableGifts = {};
 
 // --- Funciones de Ayuda ---
+const getAvatarAsBase64 = async (url) => {
+    if (!url) return null;
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Referer': 'https://www.tiktok.com/'
+            }
+        });
+        const contentType = response.headers['content-type'] || 'image/webp';
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        return `data:${contentType};base64,${base64}`;
+    } catch (error) {
+        console.error(`Error al descargar el avatar desde ${url}:`, error.message);
+        return null;
+    }
+};
+
 const sendToCentralBrain = async (eventType, data) => {
     try {
         const payload = {
@@ -18,10 +43,10 @@ const sendToCentralBrain = async (eventType, data) => {
             event_type: eventType,
             data: data
         };
-        console.log(`Enviando evento al Cerebro Central: ${eventType}`);
-        await axios.post(CENTRAL_BRAIN_URL, payload, { timeout: 5000 });
+        const message = JSON.stringify(payload);
+        await redisClient.publish(REDIS_CHANNEL, message);
     } catch (error) {
-        console.error(`Error al enviar el evento al Cerebro Central: ${error.message}`);
+        console.error(`Error al publicar evento en Redis: ${error.message}`);
     }
 };
 
@@ -72,15 +97,18 @@ const addEventListeners = (client, tiktokUser) => {
         });
     });
 
-    client.on('chat', data => {
+    client.on('chat', async (data) => {
         console.log(`Comentario de ${data.user.uniqueId}: ${data.comment}`);
+        const avatarUrl = data.user?.profilePicture?.urls[0];
+        const avatarBase64 = await getAvatarAsBase64(avatarUrl);
         sendToCentralBrain('comment', {
             user: data.user.uniqueId.toLowerCase(),
-            comment: data.comment
+            comment: data.comment,
+            avatarBase64: avatarBase64
         });
     });
 
-    client.on('gift', data => {
+    client.on('gift', async (data) => {
         if (data.giftType === 1 && !data.repeatEnd) {
             return;
         }
@@ -91,21 +119,27 @@ const addEventListeners = (client, tiktokUser) => {
 
         console.log(`${data.user.uniqueId} envió ${data.repeatCount}x "${giftName}" (ID: ${data.giftId}, Valor: ${giftValue})`);
         
+        const avatarUrl = data.user?.profilePicture?.urls[0];
+        const avatarBase64 = await getAvatarAsBase64(avatarUrl);
         sendToCentralBrain('gift', {
             user: data.user.uniqueId.toLowerCase(),
             gift_id: data.giftId,
             gift_name: giftName,
             count: data.repeatCount,
-            value: giftValue
+            value: giftValue,
+            avatarBase64: avatarBase64
         });
     });
 
-    client.on('like', data => {
+    client.on('like', async (data) => {
         console.log(`${data.user.uniqueId} envió ${data.likeCount} likes. Total: ${data.totalLikeCount}`);
+        const avatarUrl = data.user?.profilePicture?.urls[0];
+        const avatarBase64 = await getAvatarAsBase64(avatarUrl);
         sendToCentralBrain('like', {
             user: data.user.uniqueId.toLowerCase(),
             count: data.likeCount,
-            total: data.totalLikeCount
+            total: data.totalLikeCount,
+            avatarBase64: avatarBase64
         });
     });
 

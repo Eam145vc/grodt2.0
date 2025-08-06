@@ -1132,3 +1132,140 @@ body.admin-page-active {
   padding: 20px;
   overflow-y: auto;
 }
+
+.transparent-bg {
+  background-color: transparent !important;
+}
+
+/* Estilos para la pantalla de ganador */
+@keyframes fadeInPulse {
+  0% {
+    opacity: 1; /* Texto siempre visible */
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.winner-overlay .winner-title,
+.winner-overlay .winner-subtitle,
+.winner-overlay .winner-score {
+  animation: fadeInPulse 2.5s ease-in-out infinite; /* Animación en bucle */
+}
+
+.winner-team-name {
+  font-size: 1.2em; /* Más grande */
+  color: #FFD700; /* Color dorado */
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.winner-flag {
+  position: absolute;
+  top: 40%; /* Mover la bandera más arriba */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 160px; /* Un poco más pequeña para que no domine */
+  opacity: 0.8;
+  z-index: -1; /* Detrás del texto */
+}
+
+/* Estilos para el Feed de Eventos */
+.event-feed {
+  background-color: #2c3e50;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.event-feed .section-title {
+  color: #ecf0f1;
+  border-bottom: 1px solid #34495e;
+  padding-bottom: 10px;
+}
+
+.event-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  background-color: #34495e;
+}
+
+.event-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2c3e50;
+  font-size: 0.9rem;
+  color: #ecf0f1;
+}
+
+.event-item:last-child {
+  border-bottom: none;
+}
+
+.event-icon {
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+.event-timestamp {
+  margin-right: 10px;
+  font-weight: bold;
+  color: #95a5a6;
+}
+
+.event-message {
+  flex-grow: 1;
+}
+
+/* Estilos para el Panel de Estadísticas */
+.stats-panel {
+  background-color: #2c3e50;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.stats-panel .section-title {
+  color: #ecf0f1;
+  border-bottom: 1px solid #34495e;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+.stat-card {
+  background-color: #34495e;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.stat-card h4 {
+  color: #1abc9c;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.stat-card ul, .stat-card ol {
+  padding-left: 20px;
+  margin: 0;
+  color: #bdc3c7;
+}

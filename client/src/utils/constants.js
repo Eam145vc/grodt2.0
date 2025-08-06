@@ -118,6 +118,7 @@ export const ALLOWED_TEAMS = [
   'cuba',
   'ecuador',
   'el salvador',
+  'espana',
   'guatemala',
   'honduras',
   'mexico',

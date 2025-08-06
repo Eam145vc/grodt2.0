@@ -1,25 +1,49 @@
 import asyncio
 import os
-import requests
+import base64
+import redis
+import json
 from flask import Flask, request, jsonify
 from TikTokLive import TikTokLiveClient
 from TikTokLive.events import ConnectEvent, CommentEvent, DisconnectEvent, LikeEvent, GiftEvent
 from asgiref.wsgi import WsgiToAsgi
 
 # --- Configuración Global ---
-CENTRAL_BRAIN_URL = os.environ.get("CENTRAL_BRAIN_URL", "http://localhost:5001/event")
 PORT = int(os.environ.get("PYTHON_LISTENER_PORT", 5003))
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
+REDIS_CHANNEL = "tiktok-events"
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 client: TikTokLiveClient = None
 flask_app = Flask(__name__)
 app = WsgiToAsgi(flask_app)
 
 # --- Funciones de Ayuda ---
+def get_avatar_as_base64(url: str) -> str | None:
+    if not url:
+        return None
+    try:
+        import requests
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        response = requests.get(url, timeout=5, headers=headers)
+        response.raise_for_status()
+        
+        content_type = response.headers.get('Content-Type', 'image/webp')
+        encoded_string = base64.b64encode(response.content).decode('utf-8')
+        
+        return f"data:{content_type};base64,{encoded_string}"
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error al descargar el avatar desde {url}: {e}")
+        return None
+
 def send_to_central_brain(event_type: str, data: dict):
     try:
         payload = {"source": "python-listener", "event_type": event_type, "data": data}
-        requests.post(CENTRAL_BRAIN_URL, json=payload, timeout=5)
-    except requests.exceptions.RequestException as e:
-        print(f"Error al enviar el evento al Cerebro Central: {e}")
+        message = json.dumps(payload)
+        redis_client.publish(REDIS_CHANNEL, message)
+    except redis.exceptions.RedisError as e:
+        print(f"Error al publicar evento en Redis: {e}")
 
 # --- Manejadores de Eventos de TikTok ---
 async def on_connect(event: ConnectEvent):
@@ -28,7 +52,12 @@ async def on_connect(event: ConnectEvent):
 
 async def on_comment(event: CommentEvent):
     print(f"{event.user.nickname} -> {event.comment}")
-    send_to_central_brain("comment", {"user": event.user.unique_id.lower(), "comment": event.comment})
+    avatar_url = event.user.avatar_thumb.m_urls[0] if event.user.avatar_thumb else None
+    send_to_central_brain("comment", {
+        "user": event.user.unique_id.lower(),
+        "comment": event.comment,
+        "avatarBase64": get_avatar_as_base64(avatar_url)
+    })
 
 async def on_disconnect(event: DisconnectEvent):
     print("Desconectado de TikTok.")
@@ -36,32 +65,38 @@ async def on_disconnect(event: DisconnectEvent):
 
 async def on_like(event: LikeEvent):
     print(f"{event.user.nickname} envió {event.count} likes.")
+    avatar_url = event.user.avatar_thumb.m_urls[0] if event.user.avatar_thumb else None
     send_to_central_brain('like', {
         "user": event.user.unique_id.lower(),
         "count": event.count,
-        "total": 0
+        "total": 0,
+        "avatarBase64": get_avatar_as_base64(avatar_url)
     })
 
 async def on_gift(event: GiftEvent):
     # Si el regalo es parte de una racha, solo actuar cuando la racha termina.
     if event.gift.streakable and not event.streaking:
         print(f"{event.user.nickname} envió {event.repeat_count}x \"{event.gift.name}\" (ID: {event.gift.id}, Valor: {event.gift.diamond_count})")
+        avatar_url = event.user.avatar_thumb.m_urls[0] if event.user.avatar_thumb else None
         send_to_central_brain('gift', {
             "user": event.user.unique_id.lower(),
             "gift_id": event.gift.id,
             "gift_name": event.gift.name,
             "count": event.repeat_count,
-            "value": event.gift.diamond_count
+            "value": event.gift.diamond_count,
+            "avatarBase64": get_avatar_as_base64(avatar_url)
         })
     # Si el regalo no es parte de una racha, procesarlo inmediatamente.
     elif not event.gift.streakable:
         print(f"{event.user.nickname} envió \"{event.gift.name}\" (ID: {event.gift.id}, Valor: {event.gift.diamond_count})")
+        avatar_url = event.user.avatar_thumb.m_urls[0] if event.user.avatar_thumb else None
         send_to_central_brain('gift', {
             "user": event.user.unique_id.lower(),
             "gift_id": event.gift.id,
             "gift_name": event.gift.name,
             "count": 1,
-            "value": event.gift.diamond_count
+            "value": event.gift.diamond_count,
+            "avatarBase64": get_avatar_as_base64(avatar_url)
         })
 
 # --- Lógica del Cliente de TikTok ---

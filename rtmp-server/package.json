@@ -1,0 +1,16 @@
+{
+  "name": "rtmp-server",
+  "version": "1.0.0",
+  "description": "RTMP server for the project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-media-server": "^4.0.19"
+  }
+}

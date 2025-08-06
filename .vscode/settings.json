@@ -1,0 +1,4 @@
+{
+    "python.pythonPath": "${workspaceFolder}/tiktok-services/python-listener/venv/Scripts/python.exe",
+    "python-envs.pythonProjects": []
+}

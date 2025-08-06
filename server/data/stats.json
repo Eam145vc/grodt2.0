@@ -1,0 +1,505 @@
+{
+  "winsByTeam": {
+    "colombia": 10,
+    "venezuela": 16,
+    "mexico": 30,
+    "el salvador": 4,
+    "argentina": 6,
+    "ecuador": 2,
+    "uruguay": 3,
+    "guatemala": 11,
+    "nicaragua": 3,
+    "costa rica": 2,
+    "puerto rico": 2,
+    "honduras": 3,
+    "bolivia": 1,
+    "cuba": 1,
+    "peru": 2,
+    "chile": 2
+  },
+  "pointsByUser": {
+    "victoria_baez_17": 48,
+    "edgarhpmos": 26,
+    ".mirianyis.m": 5,
+    "jack.hdz5": 2,
+    "jozzhanhk": 178,
+    "serafin1992": 1383,
+    "everamaya38": 40,
+    "wasaaaaaaa91": 55,
+    "rosyycorrea": 168,
+    "elzambitos": 11,
+    "jose.balza88": 22,
+    "1991edwinamaya": 21,
+    "markitosfelixdecuc": 268,
+    ".gt846": 1,
+    "captain19834": 16,
+    "germainiremadrid": 1,
+    "gladysestrada02": 1,
+    "__0.32__": 54,
+    "safiro945": 23,
+    "angeldejesus1212": 2,
+    "deiversonromero4": 1,
+    "lizafernandez977": 1,
+    "gaudymarin03": 56,
+    "sorto1318": 12,
+    "not.daniela01": 119,
+    "lilihana.liliana": 10,
+    "nehemiasesquivel10": 4,
+    "real.madrid.502chapin": 43,
+    "solepelaez4": 2,
+    "luisdonatone": 1,
+    "arnaldoenweb": 5,
+    "jonathanbejarano98": 47,
+    "cachon505": 225,
+    "nolis.2": 31,
+    "joan.pr55": 20,
+    "peliredtv": 8,
+    "elmilamores085": 1,
+    "gina.ferrer.bravo": 2,
+    "paulabarrios956": 1,
+    "isa8506": 8,
+    "clau021601": 70,
+    "soy.rl95": 121,
+    "luishdez143": 1,
+    "mariavictoriameza13": 2,
+    "kalajimenez": 3,
+    "nickii_nicol19": 1,
+    "juniorreyes214": 3,
+    "mateomorantrivero": 1,
+    "torresmartinez356": 10,
+    "yab3203": 448,
+    "jefe.de.jefes0919": 610,
+    "darvinvasquez06": 7,
+    "herrera993111": 1,
+    "weritalpz1": 65,
+    "040714mayra19": 75,
+    "javierzanches2": 1,
+    "_gomi_": 22,
+    "angelabreu716": 2,
+    "darevil41": 15,
+    "the_lord_sol": 23,
+    "jere.frias4": 1,
+    "eduardochd": 148,
+    "nayitha.cardenas3": 1,
+    "ferminortizhernan": 20,
+    "ovsalto": 10,
+    "valeriagonzales4746": 16,
+    "aj_juarez813": 29,
+    "ignacio21cc": 20,
+    "usuarioodesconocidoo777": 10,
+    "helelado1": 40,
+    "liaavila0": 5,
+    "alerivera936": 10,
+    "bondona997": 1,
+    "francisco.suarez337": 50,
+    "isakar29": 76,
+    "christinatorres11": 310,
+    "romanpirx_hernandez": 1,
+    "ljose12_": 1,
+    "stefaniia.v": 6,
+    "mi.diablito1": 22,
+    "bj000021": 30,
+    "csar.50": 4,
+    "ismalopez7": 10,
+    "wuaritocp": 229,
+    "victorguz13": 2,
+    "barber505cardenas": 39,
+    "juanssoria97": 13,
+    "joaquin_.peru": 20,
+    "juancgutierrez680": 1,
+    "aramoz30": 11,
+    "jenniarreaga": 1,
+    "carrillo8250": 20,
+    "isai.giron.h_am": 15,
+    "hectorg12345": 2,
+    "nelson_buho": 160,
+    "brayanjimenez709": 61,
+    "jessicabenitezgmail.com": 6,
+    "teresadejesusgp": 7,
+    "rs_tatii10": 10
+  },
+  "giftsByUser": {
+    "victoria_baez_17": {
+      "Love you so much": 48
+    },
+    "edgarhpmos": {
+      "GG": 26
+    },
+    ".mirianyis.m": {
+      "GG": 2,
+      "Love you so much": 3
+    },
+    "jack.hdz5": {
+      "Love you so much": 2
+    },
+    "jozzhanhk": {
+      "Friendship Necklace": 9,
+      "Rosa": 8,
+      "GG": 2,
+      "TikTok": 6
+    },
+    "serafin1992": {
+      "GG": 127,
+      "Love you so much": 626,
+      "Rosa": 63
+    },
+    "everamaya38": {
+      "GG": 40
+    },
+    "wasaaaaaaa91": {
+      "Love you so much": 16,
+      "GG": 39
+    },
+    "rosyycorrea": {
+      "GG": 58,
+      "Love you so much": 76,
+      "TikTok": 26,
+      "It’s corn": 8
+    },
+    "elzambitos": {
+      "GG": 11
+    },
+    "jose.balza88": {
+      "TikTok": 1,
+      "GG": 21
+    },
+    "1991edwinamaya": {
+      "TikTok": 4,
+      "Love you so much": 17
+    },
+    "markitosfelixdecuc": {
+      "TikTok": 1,
+      "GG": 266,
+      "It’s corn": 1
+    },
+    ".gt846": {
+      "TikTok": 1
+    },
+    "captain19834": {
+      "Banana": 1,
+      "GG": 6
+    },
+    "germainiremadrid": {
+      "Love you so much": 1
+    },
+    "gladysestrada02": {
+      "TikTok": 1
+    },
+    "__0.32__": {
+      "GG": 4,
+      "Dolphin": 1,
+      "Hi Bear": 4
+    },
+    "safiro945": {
+      "GG": 2,
+      "Banana": 2,
+      "It’s corn": 1
+    },
+    "angeldejesus1212": {
+      "TikTok": 2
+    },
+    "deiversonromero4": {
+      "GG": 1
+    },
+    "lizafernandez977": {
+      "It’s corn": 1
+    },
+    "gaudymarin03": {
+      "Banana": 1,
+      "Love you so much": 21,
+      "TikTok": 9,
+      "It’s corn": 16
+    },
+    "sorto1318": {
+      "GG": 12
+    },
+    "not.daniela01": {
+      "Love you so much": 3,
+      "TikTok": 31,
+      "It’s corn": 4,
+      "GG": 81
+    },
+    "lilihana.liliana": {
+      "GG": 2,
+      "Love you so much": 8
+    },
+    "nehemiasesquivel10": {
+      "Love you so much": 2,
+      "It’s corn": 2
+    },
+    "real.madrid.502chapin": {
+      "Banana": 3,
+      "Friendship Necklace": 1,
+      "TikTok": 3
+    },
+    "solepelaez4": {
+      "GG": 2
+    },
+    "luisdonatone": {
+      "TikTok": 1
+    },
+    "arnaldoenweb": {
+      "GG": 5
+    },
+    "jonathanbejarano98": {
+      "Love you so much": 26,
+      "TikTok": 10,
+      "It’s corn": 11
+    },
+    "cachon505": {
+      "Friendship Necklace": 20,
+      "TikTok": 4,
+      "Dolphin": 2,
+      "It’s corn": 1
+    },
+    "nolis.2": {
+      "Love you so much": 7,
+      "GG": 24
+    },
+    "joan.pr55": {
+      "Friendship Necklace": 2
+    },
+    "peliredtv": {
+      "GG": 6,
+      "Love you so much": 2
+    },
+    "elmilamores085": {
+      "Love you so much": 1
+    },
+    "gina.ferrer.bravo": {
+      "GG": 2
+    },
+    "paulabarrios956": {
+      "GG": 1
+    },
+    "isa8506": {
+      "Love you so much": 8
+    },
+    "clau021601": {
+      "Love you so much": 70
+    },
+    "soy.rl95": {
+      "Banana": 2,
+      "Friendship Necklace": 8,
+      "It’s corn": 1,
+      "Hi Bear": 2
+    },
+    "luishdez143": {
+      "GG": 1
+    },
+    "mariavictoriameza13": {
+      "GG": 2
+    },
+    "kalajimenez": {
+      "Love you so much": 2,
+      "It’s corn": 1
+    },
+    "nickii_nicol19": {
+      "GG": 1
+    },
+    "juniorreyes214": {
+      "Love you so much": 3
+    },
+    "mateomorantrivero": {
+      "GG": 1
+    },
+    "torresmartinez356": {
+      "Love you so much": 5,
+      "It’s corn": 1,
+      "It's corn": 4
+    },
+    "yab3203": {
+      "GG": 391,
+      "It’s corn": 57
+    },
+    "jefe.de.jefes0919": {
+      "Friendship Necklace": 48,
+      "Love you so much": 99,
+      "Hi Bear": 3,
+      "It’s corn": 1
+    },
+    "darvinvasquez06": {
+      "It’s corn": 3,
+      "TikTok": 3,
+      "Love you so much": 1
+    },
+    "herrera993111": {
+      "It’s corn": 1
+    },
+    "weritalpz1": {
+      "GG": 31,
+      "TikTok": 2,
+      "Love you so much": 32
+    },
+    "040714mayra19": {
+      "Friendship Necklace": 5,
+      "It’s corn": 5,
+      "Dolphin": 2
+    },
+    "javierzanches2": {
+      "TikTok": 1
+    },
+    "_gomi_": {
+      "TikTok": 2,
+      "Dolphin": 2
+    },
+    "angelabreu716": {
+      "TikTok": 1,
+      "GG": 1
+    },
+    "darevil41": {
+      "Banana": 1,
+      "GG": 5
+    },
+    "the_lord_sol": {
+      "Friendship Necklace": 2,
+      "TikTok": 3
+    },
+    "jere.frias4": {
+      "GG": 1
+    },
+    "eduardochd": {
+      "Banana": 2,
+      "Love you so much": 51,
+      "GG": 67,
+      "Friendship Necklace": 1
+    },
+    "nayitha.cardenas3": {
+      "Love you so much": 1
+    },
+    "ferminortizhernan": {
+      "Friendship Necklace": 2
+    },
+    "ovsalto": {
+      "Banana": 1
+    },
+    "valeriagonzales4746": {
+      "GG": 6,
+      "Banana": 1
+    },
+    "aj_juarez813": {
+      "It’s corn": 19,
+      "Hi Bear": 1
+    },
+    "ignacio21cc": {
+      "It’s corn": 13,
+      "GG": 7
+    },
+    "usuarioodesconocidoo777": {
+      "GG": 5,
+      "Love you so much": 5
+    },
+    "helelado1": {
+      "Friendship Necklace": 3,
+      "Banana": 1
+    },
+    "liaavila0": {
+      "TikTok": 2,
+      "It’s corn": 3
+    },
+    "alerivera936": {
+      "Friendship Necklace": 1
+    },
+    "bondona997": {
+      "Love you so much": 1
+    },
+    "francisco.suarez337": {
+      "Banana": 5
+    },
+    "isakar29": {
+      "Love you so much": 46,
+      "It’s corn": 6,
+      "It's corn": 15,
+      "TikTok": 9
+    },
+    "christinatorres11": {
+      "GG": 184,
+      "Love you so much": 126
+    },
+    "romanpirx_hernandez": {
+      "GG": 1
+    },
+    "ljose12_": {
+      "Love you so much": 1
+    },
+    "stefaniia.v": {
+      "GG": 6
+    },
+    "mi.diablito1": {
+      "GG": 2,
+      "Banana": 2
+    },
+    "bj000021": {
+      "Banana": 2,
+      "Friendship Necklace": 1
+    },
+    "csar.50": {
+      "Love you so much": 2,
+      "TikTok": 2
+    },
+    "ismalopez7": {
+      "Friendship Necklace": 1
+    },
+    "wuaritocp": {
+      "GG": 107,
+      "It’s corn": 8,
+      "It's corn": 40,
+      "TikTok": 74
+    },
+    "victorguz13": {
+      "Love you so much": 2
+    },
+    "barber505cardenas": {
+      "Love you so much": 39
+    },
+    "juanssoria97": {
+      "TikTok": 1,
+      "It’s corn": 5,
+      "GG": 7
+    },
+    "joaquin_.peru": {
+      "Banana": 1,
+      "TikTok": 7,
+      "Love you so much": 3
+    },
+    "juancgutierrez680": {
+      "It’s corn": 1
+    },
+    "aramoz30": {
+      "It’s corn": 10,
+      "TikTok": 1
+    },
+    "jenniarreaga": {
+      "GG": 1
+    },
+    "carrillo8250": {
+      "Dolphin": 2
+    },
+    "isai.giron.h_am": {
+      "TikTok": 5,
+      "Dolphin": 1
+    },
+    "hectorg12345": {
+      "GG": 2
+    },
+    "nelson_buho": {
+      "Banana": 13,
+      "Dolphin": 3
+    },
+    "brayanjimenez709": {
+      "Banana": 1,
+      "Friendship Necklace": 2,
+      "Love you so much": 31
+    },
+    "jessicabenitezgmail.com": {
+      "GG": 4,
+      "Love you so much": 2
+    },
+    "teresadejesusgp": {
+      "TikTok": 7
+    },
+    "rs_tatii10": {
+      "Banana": 1
+    }
+  }
+}

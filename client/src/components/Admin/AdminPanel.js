@@ -14,6 +14,8 @@ const AdminPanel = (props) => {
   console.log(`%c[AdminPanel] Renderizando. Props recibidas:`, 'color: orange; font-weight: bold;', { socket: !!socket, isConnected });
 
   const [energyInputs, setEnergyInputs] = useState({ 1: '', 2: '', 3: '', 4: '' });
+  const [presalaTime, setPresalaTime] = useState(180);
+  const [presalaPoints, setPresalaPoints] = useState(1000);
 
   if (!gameState || !gameState.lanes) {
     return <div>Cargando estado del juego...</div>;
@@ -41,8 +43,42 @@ const AdminPanel = (props) => {
     socket.emit('admin:setEnergy', { laneId, energy: energyValue });
   };
 
+  const handleUpdatePresalaConfig = () => {
+    if (!socket) {
+      console.error("[AdminPanel] ERROR: El objeto socket es NULO.");
+      return;
+    }
+    const time = parseInt(presalaTime, 10);
+    const points = parseInt(presalaPoints, 10);
+    if (isNaN(time) || isNaN(points)) {
+      console.error("[AdminPanel] ERROR: Los valores de tiempo y puntos deben ser números.");
+      return;
+    }
+    socket.emit('admin:updatePresalaConfig', { time, points });
+  };
+
   return (
     <div style={{ border: '2px solid red', padding: '10px', margin: '10px' }}>
+      <div className="admin-section">
+        <h3>🏁 Controles de Presala</h3>
+        <div className="presala-controls">
+          <input
+            type="number"
+            value={presalaTime}
+            onChange={(e) => setPresalaTime(e.target.value)}
+            placeholder="Tiempo (s)"
+          />
+          <input
+            type="number"
+            value={presalaPoints}
+            onChange={(e) => setPresalaPoints(e.target.value)}
+            placeholder="Puntos para clasificar"
+          />
+          <button onClick={handleUpdatePresalaConfig} disabled={!isConnected}>
+            Actualizar Configuración
+          </button>
+        </div>
+      </div>
       <div className="admin-section">
         <h3>⚡ Controles de Energía</h3>
         <div className="energy-controls">
